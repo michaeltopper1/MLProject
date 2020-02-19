@@ -20,4 +20,5 @@ Here are some notes on the data that we have:
 
 Click [here](https://a816-health.nyc.gov/ABCEatsRestaurants/#/faq) for a link to the website for more information!
 
-# Note on what tasks I may do. 
+# How should we handle missing data?
+Michael's vote: we delete those suckers for some nice pretty graphs or we can code them all as NA. Specifically, how should we handle missing data on GRADE?
