@@ -1,0 +1,23 @@
+---
+title: "Some notes about the data"
+author: "Michael Topper"
+date: "2/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Notes on the General Data
+
+
+Here are some notes on the data that we have:
+
+- "A" grade: 0 to 13 points for sanitary violations
+- "B" grade: 14 to 27 points for sanitary violations
+- "C" grade: 28 or more points for sanitary violations
+
+Click [here](https://a816-health.nyc.gov/ABCEatsRestaurants/#/faq) for a link to the website for more information!
+
+# Note on what tasks I may do. 
