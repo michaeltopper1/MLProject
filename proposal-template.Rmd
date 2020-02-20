@@ -1,0 +1,74 @@
+---
+title: "Project Proposal"
+author: 
+  - Danny Klinenberg 7626054
+  - Michael Topper 95788708
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+bibliography: references.bib
+nocite: '@*'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(kableExtra)
+library(ipumsr)
+
+######################UPLOADING DATA###############################
+# NOTE: To load data, you must download both the extract's data and the DDI
+# and also set the working directory to the folder with these files (or change the path below).
+
+if (!require("ipumsr")) stop("Reading IPUMS data into R requires the ipumsr package. It can be installed using the following command: install.packages('ipumsr')")
+
+ddi <- read_ipums_ddi("cps_00004.xml")
+data <- read_ipums_micro(ddi)
+```
+
+
+# Research Question
+
+\noindent Using a large dataset from the IPUMS CPS, we propose to answer the following questions:
+
+  1) *Can we predict who gets a divorce based on characteristics from a sample?* Since [@becker1974theory], 
+  
+  2) *Do younger people divorce more than older people?* Economic theory tells us that extremely young adults have a lower cost of divorce than older adults [@brassiolo2016domestic]. The mechanism behind this result is that younger people (without children) have a greater likelihood of finding a partner if they are divorced. For example, if a 25 year old divorces, they have a much larger pool of potential people to remarry than if a 55 year old divorces. Hence, it is much less costly for the young adult to divorce than the older adult. Empirical evidence on this topic is limited, yet we can explore this mechanism using our dataset. 
+  3) *Does having young children impact divorce decisions?*
+  
+  4) *Does religion influence divorce decisions?* Religion contributes to individual's values. For instance, a person who is a devout Christian may be less inclined to get a divorce than an Atheist because their religion is opposed to divorce. Once again, this can be attributed to economic theory: the cost of divorce for a Christian may be higher than the cost of divorce for an Atheist. However, religions are likely to have heterogeneous effects across divorce. In particular, some religions have more lenient views on divorce than others. We will be able to disentangle these effects with our data.  
+  5) *Do the predictors of divorce change over time?* In other words, are the factors that influence divorce dynamic? According to the literature, the aggregate risk of marriage ending in divorce has declined from the peak that occurred in the 1980s [@cherlin2010demographic]. We seek to analyze whether there were different factors that were a heavy influence of divorce in past years that no longer carry weight in today's society. Social norms change rapidly over time, and we argue that what predicts divorce today is different than what predicted divorce a decade ago. Many scholars have tried to explain the dynamic divorce rates with a variety of explanations. A study by [@cherlin2004deinstitutionalization] found that social attitudes towards divorce have changed drastically over time. On the other hand, a study by [@ruggles1997rise] suggests that rising female labor force participation may have caused fluctuations in divorce. We can explicitly test these theories by forming predictive models using a base year and then testing the model on a variety of different years. We can then plot the success rate over time to get an idea of the dynamics. 
+
+
+\noindent 
+
+# Data 
+
+\noindent Our main dataset will be the Integrated Public Use Microdata Series (IPUMS) Current Population Survey (CPS) for 2009 and 2019. We use the subset of the data called Annual Social and Economic Supplement (ASEC) for CPS. The survey asks members of households a variety of social and economic questions about the previous year. The Census Bureau randomly selects about 60,000 households a year. There are `r dim(data)[1]` observations and 22 features. The features are:
+
+```{r}
+kable(ddi[["var_info"]][c(seq(10,13),seq(15,32)),c(2)],caption = "Features", col.names = c("Name")) %>% 
+   kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position")
+```
+
+ The variable of interest, *Marital Status* is classified into 9 categories:
+
+```{r}
+kable((ddi[["var_info"]])[[4]][[14]],caption = "Classification of Marital Status", col.names = c("Value","Label")) %>% 
+   kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position")
+```
+
+We will convert this variable into a binary outcome defined as divorced if an individual is **Divorced** or **Widowed or Divorced**. Defining divorce as so, `r round(100*mean(data$MARST %in% c(4,7)),2)`% of the population is divorced. While this appears problematic at first, this equates to `r sum(data$MARST %in% c(4,7))` individuals being classified as divorced.
+
+
+# Analysis Plan
+
+\noindent We will preface this section by warning the reader that this analysis plan is extremely tentative and subject to change. However, we plan on using supervised learning techniques including k-nearest neighbors, decision trees, logistic regression, and neural networks to answer our research questions. We plan to use cross validation to find optimal number of neighbors in k-nearest neighbors and the optimal size of our tree when using decision trees. Due to the inaccuracy of decision trees, we will supplement this with random forests. We plan to compare the accuracy of random forests with the accuracy of our decision trees. Exploratory analysis will be performed with a variety of different graphs to find ``good'' predictors for our outcomes of interest. In addition, we will provide summary statistics to give a broad picture of the data that we are working with (i.e. average health score, most frequent health violations etc.). For model validation, we will randomly split our dataset into two sections: a training set and a test set. We will train the model on the training data and then test it on our testing data.
+
+
+\noindent Additionally, to answer question (5), we plan to create a model based on a ``base'' year. This model will be tested and trained on the same year to get  predictions on divorce for that particular year. After doing this, we will test the model on multiple years to find how the model predicts *over time*. Furthermore, if time permits, we can do this with a variety of base years and see how each of prediction models vary over time. Since decision trees give a nice representation of which covariates are weighted the most, we can analyze the trees within each of these base years to see what are the most important factors of divorce.  
+
+
+
+# References
+
+

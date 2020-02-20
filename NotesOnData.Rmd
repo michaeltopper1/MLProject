@@ -2,7 +2,10 @@
 title: "Some notes about the data"
 author: "Michael Topper"
 date: "2/19/2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -10,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Notes on the General Data
-
+[@brassiolo2016domestic]
 
 Here are some notes on the data that we have:
 
