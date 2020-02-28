@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(kableExtra)
 library(ipumsr)
+library(dplyr)
+library(stringr)
 ######################UPLOADING DATA###############################
 # NOTE: To load data, you must download both the extract's data and the DDI
 # and also set the working directory to the folder with these files (or change the path below).
@@ -30,7 +32,15 @@ Here is the definition of all the marital statuses:
 ddi[["var_info"]][[4]][[14]]
 ```
 
-Hence, 4 is our indicator for whether someone is divorced or not. Let's look at some pretty graphs.
+Hence, 4 is our indicator for whether someone is divorced or not. We won't be interested in those who were never married/single. If we are interested in determinants of divorce, it seems weird to be using people who were never married.
+
+```{r}
+new.data<-data %>% 
+  filter(MARST!=6)
+```
+
+
+Let's look at some pretty graphs. 
 
 ```{r}
 data %>% filter(MARST == 4) %>% 
@@ -67,5 +77,31 @@ new.data %>% select(education, RACE, AGE) %>% View()
 
 ```
  
+The dataset reports many different races:
+```{r}
+kable((ddi[["var_info"]])[[4]][[13]], col.names = c("",""), caption = "Race Variables")
+```
 
+```{r}
+kable(table(data$RACE), caption = "Frequency of Races")
+```
+It's concerning some of the race breakdowns only appear twice. We make the simplifying assumption to define every person with more than one race identified as multi-racial.
 
+```{r}
+new.data<-new.data %>% 
+  mutate(race=ifelse(RACE<701,RACE,1000)) %>% 
+  mutate(race=recode(race,`100`="white",`200`="black",`300`="American Indiance/Aleut/Eskimo",`650`="Asian or Pacific Islander",`651`="Asian",`652`="Hawaiian",`700`="Other",`1000`="Multi-Racial"))
+```
+
+Let's look at the barplot now:
+
+```{r}
+new.data %>% 
+  group_by(race) %>% 
+  summarise(n=n()) %>% 
+  mutate(percent=n/sum(n)) %>% 
+  ggplot(., aes(race,percent))+
+  geom_bar(stat = "identity")+
+  ggtitle("Percent of Races")
+```
+The sample is disproportionately white, but the proportions are slightly better now.
