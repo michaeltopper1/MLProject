@@ -103,10 +103,21 @@ The sample is disproportionately white, but the proportions are slightly better 
 
 Cleaning the employment status (EMPSTAT) command. 
 ```{r}
-new.data %>%
+new.data = new.data %>%
   mutate(EMPSTAT = cut(EMPSTAT, breaks= c(-Inf, 0, 12, 22, Inf), labels = c(NA, "Employed", "Unemployed", "NILF")))
   
 ```
+
+
+Cleaning the RELATE variable.
+
+```{r}
+new.data = new.data %>% 
+  mutate(RELATE = cut(RELATE, breaks = c(-Inf,-1, 200, 300, 302, 500,900, Inf), labels = c(NA, 'Head/householder', 'Spouse', 'Child', 'Stepchild','Parent', 'Other')))
+
+new.data %>%  View()
+```
+
 
 Data that we will use for analysis
 ```{r}
