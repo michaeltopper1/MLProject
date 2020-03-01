@@ -45,7 +45,6 @@ Let's look at some pretty graphs.
 ```{r}
 data %>% filter(MARST == 4) %>% 
   select(MARST, AGE, EDUC, HISPAN, ASIAN, SEX) %>% 
-  View()
 
 data %>% distinct(OCC)
 data %>% filter(MARST == 4, INCTOT != 99999999) %>% 
@@ -114,4 +113,18 @@ new.data %>%
   ggtitle("Percent of Races")
 ```
 The sample is disproportionately white, but the proportions are slightly better now.
+
+
+Cleaning the employment status (EMPSTAT) command. 
+```{r}
+new.data %>%
+  mutate(EMPSTAT = cut(EMPSTAT, breaks= c(-Inf, 0, 12, 22, Inf), labels = c(NA, "Employed", "Unemployed", "NILF")))
+  
+```
+
+Data that we will use for analysis
+```{r}
+data.use = new.data %>% 
+  select(YEAR, RELATE, AGE, SEX, education, race, birthplace, MARST, EMPSTAT)
+```
 
