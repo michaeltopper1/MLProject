@@ -40,20 +40,6 @@ new.data<-data %>%
 ```
 
 
-Let's look at some pretty graphs. 
-
-```{r}
-data %>% filter(MARST == 4) %>% 
-  select(MARST, AGE, EDUC, HISPAN, ASIAN, SEX) %>% 
-
-data %>% distinct(OCC)
-data %>% filter(MARST == 4, INCTOT != 99999999) %>% 
-  ggplot(aes(AGE, INCTOT)) +
-  geom_point()
-data %>% 
-  filter(INCTOT == 99999999) %>% 
-  count()
-```
 
 
 Changing the education variable to something we can work with. 
