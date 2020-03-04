@@ -3,6 +3,8 @@ title: "Cleaning"
 author: "Michael Topper"
 date: "3/4/2020"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -11,3 +13,58 @@ library(tidyverse)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
 
 ```
+
+
+Exploratory Data Analysis
+```{r}
+df %>% ggplot(aes(average_rating)) +
+  geom_histogram()
+
+
+df %>% mutate(above7 = as.factor(ifelse(average_rating >= 7, 1 , 0))) %>% count(above7)
+
+df %>% count(publisher, sort = T) 
+
+df %>% 
+  count(year_published) %>% 
+  arrange(desc(year_published)) %>% 
+  ggplot(aes(year_published, n)) +
+  geom_line() 
+
+
+df %>% filter(max_playtime < 1000) %>% ggplot(aes(max_playtime)) + 
+  geom_histogram()
+
+df %>% filter(max_playtime < 1000) %>% distinct(max_playtime) 
+```
+
+```{r}
+df %>%  group_by(publisher) %>% View()
+```
+
+Cleaning
+```{r}
+catvariables = df %>% 
+  select(game_id, name, family, expansion, category, average_rating) %>% 
+  gather(key = type, value = value, family, expansion, category) %>% 
+  filter(!is.na(value)) %>% 
+  separate_rows(value, sep = ',') %>% 
+  arrange(game_id)
+
+catvariables %>%  ggplot(aes(average_rating)) + 
+  geom_histogram() +
+  facet_wrap(~type) 
+```
+
+
+Making a graph of the relationship between the maximum number of players and the average rating:
+```{r}
+df %>%  ggplot(aes(min_players, average_rating)) +
+  geom_point() +
+  geom_smooth(method = 'lm', se = TRUE)
+```
+
+
+
+
+
