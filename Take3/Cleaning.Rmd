@@ -38,33 +38,67 @@ df %>% filter(max_playtime < 1000) %>% ggplot(aes(max_playtime)) +
 df %>% filter(max_playtime < 1000) %>% distinct(max_playtime) 
 ```
 
+Finding the top types of games that are created. 
 ```{r}
-df %>%  group_by(publisher) %>% View()
-```
-
-Cleaning
-```{r}
-catvariables = df %>% 
-  select(game_id, name, family, expansion, category, average_rating) %>% 
-  gather(key = type, value = value, family, expansion, category) %>% 
+catvars = df %>% 
+  select(game_id, name, family, expansion, category, artist, designer, average_rating) %>% 
+  gather(type, value, -game_id, -name) %>% 
   filter(!is.na(value)) %>% 
   separate_rows(value, sep = ',') %>% 
   arrange(game_id)
 
-catvariables %>%  ggplot(aes(average_rating)) + 
-  geom_histogram() +
-  facet_wrap(~type) 
+catcounts = catvars %>% 
+  count(type, value,  sort = T)
+
+catcounts %>% 
+  filter(type == 'category') %>% 
+  mutate(value = fct_reorder(value, n)) %>% 
+  top_n(20, n) %>% 
+  ggplot(aes(value, n)) +
+  geom_col() +
+  coord_flip() +
+  ylab("Total") +
+  xlab("Board Game Type") +
+  labs(title = "Most Popular Types of Board Games")
 ```
 
 
-Making a graph of the relationship between the maximum number of players and the average rating:
+
+
+
+
+Making a bar graph of decade 
 ```{r}
-df %>%  ggplot(aes(min_players, average_rating)) +
-  geom_point() +
-  geom_smooth(method = 'lm', se = TRUE)
+df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>% 
+  ggplot(aes(x = decade, y = avgdecaderating)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm') +
+  labs(title = "Average Decade Rating Over Time") +
+  xlab("Decade") +
+  ylab("Average Rating in the Decade") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+
 ```
 
+Designers by decade.
+```{r}
+df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  filter(decade > 1950) %>% 
+  filter(designer != '(Uncredited)') %>% 
+  group_by(decade) %>% 
+  count(designer, sort = T) %>%  
+  filter(!is.na(designer)) %>% 
+  arrange(desc(n)) %>% 
+  top_n(5, n) %>% 
+  ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
+  geom_col() +
+  facet_wrap(~decade) +
+  coord_flip() +
+  labs(fill = "Decade", title = "Top 5 Designers by Decade") +
+  xlab("Designer") +
+  ylab("Count")
 
-
-
+```
 
