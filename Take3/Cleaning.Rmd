@@ -20,25 +20,7 @@ theme_set(theme_bw())
 
 Exploratory Data Analysis
 ```{r}
-df %>% ggplot(aes(average_rating)) +
-  geom_histogram()
 
-
-df %>% mutate(above7 = as.factor(ifelse(average_rating >= 7, 1 , 0))) %>% count(above7)
-
-df %>% count(publisher, sort = T) 
-
-df %>% 
-  count(year_published) %>% 
-  arrange(desc(year_published)) %>% 
-  ggplot(aes(year_published, n)) +
-  geom_line() 
-
-
-df %>% filter(max_playtime < 1000) %>% ggplot(aes(max_playtime)) + 
-  geom_histogram()
-
-df %>% filter(max_playtime < 1000) %>% distinct(max_playtime) 
 ```
 
 Finding the top types of games that are created. 
@@ -58,14 +40,29 @@ catcounts %>%
   mutate(value = fct_reorder(value, n)) %>% 
   top_n(20, n) %>% 
   ggplot(aes(value, n)) +
-  geom_col() +
+  geom_col(fill = "blue") +
   coord_flip() +
   ylab("Total") +
   xlab("Board Game Type") +
   labs(title = "Most Popular Types of Board Games")
 ```
 
+Notice that maxplaytime and playtime are exactly the same!
 
+```{r}
+identical(df$max_playtime, df$playing_time)
+```
+
+Histogram of the average rating
+```{r}
+df %>% 
+  ggplot(aes(x = average_rating)) +
+  geom_histogram(fill = "blue") +
+  geom_vline(aes(xintercept = quantile(average_rating, .80), color = "red")) +
+  labs(color = "80th Percentile", title = "Distribution of Average Ratings Across Games") +
+  xlab("Average Rating") +
+  ylab("Count")
+```
 
 
 
@@ -93,7 +90,7 @@ df %>% mutate(decade = 10 * (year_published %/% 10)) %>%
   group_by(decade) %>% 
   count(designer, sort = T) %>%  
   filter(!is.na(designer)) %>% 
-  arrange(desc(n)) %>% 
+  mutate(designer = fct_reorder(designer, n, .desc = F)) %>% 
   top_n(5, n) %>% 
   ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
   geom_col() +
@@ -106,12 +103,23 @@ df %>% mutate(decade = 10 * (year_published %/% 10)) %>%
 ```
 
 
-Publisher and mechanics
+Most popular play styles bar graph
 ```{r}
-mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
 
-mechanics %>% 
-  group_by(game_id) %>% count(mechanic, sort = T)
+df %>% 
+  mutate(decade = 10 * (year_published %/% 10)) %>% 
+  separate(mechanic, into = 'mechanic1' , sep = ",") %>% 
+  filter(!is.na(mechanic1)) %>% 
+  count(mechanic1, sort = T) %>%
+  mutate(mechanic1 = fct_reorder(mechanic1, n, .desc = F)) %>% 
+  top_n(20, n) %>% 
+  ggplot(aes(x = mechanic1, y= n)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  xlab("Game Type") +
+  ylab("Count") +
+  labs(title = "Most Popular Play Styles for Board Games")
+  
 ```
 
 
@@ -122,6 +130,10 @@ Let's just use the first mechanic the main mechanic and then count the number of
 danny.dat<-df %>% 
   separate(.,mechanic, "mechanic1",sep=",",extra="drop") %>% #Just grabbing the first mechanic for our purposes 
   mutate(expansion1=ifelse(is.na(expansion),0,str_count(df$expansion,",")))
+
+#Michael is now going to do the same thing as you did with mechanic but do it with family instead
+danny.dat = danny.dat %>% 
+  separate(family, into = "family1", sep = ":", extra = "drop")
 
 danny.dat %>% 
   ggplot(., aes(I(log(expansion1+1)), average_rating))+
