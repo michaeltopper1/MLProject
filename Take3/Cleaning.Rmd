@@ -10,8 +10,11 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(dplyr)
+library(fastDummies)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
 
+theme_set(theme_bw())
 ```
 
 
@@ -109,5 +112,57 @@ mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_
 
 mechanics %>% 
   group_by(game_id) %>% count(mechanic, sort = T)
+```
+
+
+# Danny Cleaning
+
+Let's just use the first mechanic the main mechanic and then count the number of expansions each game has
+```{r}
+danny.dat<-df %>% 
+  separate(.,mechanic, "mechanic1",sep=",",extra="drop") %>% #Just grabbing the first mechanic for our purposes 
+  mutate(expansion1=ifelse(is.na(expansion),0,str_count(df$expansion,",")))
+
+danny.dat %>% 
+  ggplot(., aes(I(log(expansion1+1)), average_rating))+
+  geom_point()+
+  geom_smooth()
+```
+Looks like more is better here. The relationship is a little funky but overall increasing. The relationship looks best as a log relationship. So I'm going to change expansion1 to that.
+
+```{r}
+danny.dat.use<-danny.dat %>% 
+  mutate(expansion1=log(expansion1+1),
+         decade = 10 * (year_published %/% 10),
+         above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
+         ) %>% 
+  select(c(above7,max_playtime,min_age,min_players,mechanic1,users_rated,expansion1,decade)) %>% 
+  #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
+  mutate(above7=as.factor(above7)) %>% 
+  drop_na()
+
+```
+
+#Training and Testing
+
+```{r}
+train<-sample(seq(1,dim(danny.dat.use)[1]), .75*dim(danny.dat.use)[1], replace = FALSE)
+
+train.dat<-danny.dat.use[train,]
+test.dat<-danny.dat.use[-train,]
+
+```
+
+#Logistic Regression
+```{r}
+y.hat.log<-as.numeric(predict(glm(above7~.,data = train.dat, family = binomial(link="logit")), type="response")>.5)
+
+length(y.hat.log)
+length(train.dat$above7)
+
+table(train.dat$above7,y.hat.log)
+
+mean(y.hat.log ==train.dat$above7)
+
 ```
 

@@ -125,9 +125,10 @@ Data that we will use for analysis
 ```{r}
 set.seed(111)
 data.use = new.data %>% 
-  select(YEAR, RELATE, AGE, SEX, education, race, birthplace, MARST, EMPSTAT) %>% 
+  select(YEAR, RELATE, AGE, SEX, education, race, birthplace, MARST, EMPSTAT, INCWAGE) %>% 
   mutate(divorce=as.numeric(MARST==4),
-         type=length(c(rep("train",.7*dim(new.data)[1]),rep("test",.15*dim(new.data)[1]),rep("valid",.15*dim(new.data)[1]+1))) #Rounding error means we have to add a 1
+         type=(c(rep("train",.7*dim(new.data)[1]),rep("test",.15*dim(new.data)[1]),rep("valid",.15*dim(new.data)[1]+1))),#Rounding error means we have to add a 1
+         SEX=ifelse(SEX==1,"Male","Female")
          )%>% 
   select(-MARST)
 
