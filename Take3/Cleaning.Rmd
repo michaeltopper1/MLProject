@@ -102,3 +102,12 @@ df %>% mutate(decade = 10 * (year_published %/% 10)) %>%
 
 ```
 
+
+Publisher and mechanics
+```{r}
+mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
+
+mechanics %>% 
+  group_by(game_id) %>% count(mechanic, sort = T)
+```
+
