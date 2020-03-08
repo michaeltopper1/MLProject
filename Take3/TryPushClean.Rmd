@@ -312,3 +312,84 @@ sum(diag(conf.matrix)/sum(conf.matrix))
 ```
 
 KNN gives us a slightly higher prediction rate than logistic regression.
+
+
+# Decision Trees by Mikey Boi
+```{r}
+michael.dat = danny.dat %>% 
+  mutate(expansion1=log(expansion1+1),
+         decade = 10 * (year_published %/% 10),
+         above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
+         ) %>% 
+  select(c(above7,max_playtime,min_age,min_players, max_players, designer, mechanic1,users_rated,expansion1,decade)) %>% 
+  #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
+  mutate(above7=as.factor(above7)) %>% 
+  drop_na()
+```
+I am going to add in a binary variable equal to one if the game was designed by a Top 10 designer. 
+
+```{r}
+top.ten.designer = michael.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
+top.ten.names = top.ten.designer$designer
+
+#added in a top ten variable
+michael.dat = michael.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
+```
+Testing and training data for myself.
+```{r}
+set.seed(4)
+
+if (length(michael.dat$above7 %% 2 !=0)) {
+  michael.dat = michael.dat[-c(round(runif(1, 1, length(michael.dat$above7)),0)),]
+}
+train.m = sample(1:nrow(michael.dat), 0.5*nrow(michael.dat))
+
+train.dat.m<-michael.dat[train.m,]
+test.dat.m<-michael.dat[-train.m,]
+```
+
+Now I am going to make the tree.
+```{r}
+library(tree)
+tree.fit = tree(above7 ~. -designer, data = train.dat.m)
+summary(tree.fit)
+plot(tree.fit)
+text(tree.fit, pretty = 0, cex = 0.7)
+title("Classification Tree Built on Training Set")
+```
+
+Now to fit this to the testing data
+```{r}
+yhat.testset = predict(tree.fit, data = test.dat.m, type = 'class')
+
+#Obtaining a confusion matrix
+error.tree = table(yhat.testset, test.dat.m$above7)
+tree.accuracy = sum(diag(error.tree)/sum(error.tree))
+tree.error.rate = 1 - tree.accuracy
+```
+
+Hence, the tree had a misclassification rate of `r tree.error.rate`.
+
+Now I will use cross validation to find the optimal tree size. 
+
+```{r}
+cv.for.tree = cv.tree(tree.fit, FUN=prune.misclass, K=10)
+optimal.size = cv.for.tree$size[which.min(cv.for.tree$dev)]
+```
+
+THe optimal size for the tree is `r optimal.size`. 
+
+Now to prune
+```{r}
+tree.prune = prune.misclass(tree.fit, best = optimal.size)
+plot(tree.prune)
+text(tree.prune, pretty = 0, cex = 0.8)
+title("Pruned Tree Using CV for Optimal Size")
+```
+
+
+
+
+
+
+
