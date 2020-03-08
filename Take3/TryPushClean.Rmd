@@ -387,7 +387,15 @@ text(tree.prune, pretty = 0, cex = 0.8)
 title("Pruned Tree Using CV for Optimal Size")
 ```
 
+Predicting on the pruned tree:
+```{r}
+pred.prune = predict(tree.prune, data = test.dat.m, type = 'class')
+error.prune = table(pred.prune, test.dat.m$above7)
+prune.accuracy = sum(diag(error.prune))/sum(error.prune)
+prune.error.rate = 1 - prune.accuracy
+```
 
+Therefore, the prune test error is `r prune.error.rate`. This looks to be very slightly better off than the non-pruned tree.
 
 
 
