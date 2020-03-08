@@ -334,6 +334,7 @@ top.ten.names = top.ten.designer$designer
 
 #added in a top ten variable
 michael.dat = michael.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
+michael.dat = michael.dat %>% mutate_if(is.character, as.factor)
 ```
 Testing and training data for myself.
 ```{r}
@@ -396,6 +397,48 @@ prune.error.rate = 1 - prune.accuracy
 ```
 
 Therefore, the prune test error is `r prune.error.rate`. This looks to be very slightly better off than the non-pruned tree.
+
+# Random Forests
+
+Now to try random forests.
+```{r}
+library(randomForest)
+
+rf.tree = randomForest(above7 ~. -designer, data = train.dat.m, mtry = 3, ntree = 500, importance = T)
+
+plot(rf.tree)
+```
+
+
+Now going to get the test error rate for the random forest.
+```{r}
+yhat.rf = predict(rf.tree, newdata = test.dat.m)
+rf.err = table(pred = yhat.rf, truth = test.dat.m$above7)
+rf.err
+rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
+```
+
+Hence, the random forest got a test error rate of `r rf.test.error`. This is substantially better than anything we have tried before.
+
+```{r}
+varImpPlot(rf.tree, main = "Most Important Variables for the Random Forest")
+
+```
+
+Now running a loop to find the best $m$.
+```{r}
+# rf.error.loop = rep(0, 8)
+# for (i in 2:9) {
+#   rf.tree.loop = randomForest(above7 ~. -designer, data = train.dat.m, mtry = i, ntree = 500, importance = T)
+#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat.m)
+#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat.m$above7)
+#   rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
+#   rf.error.loop[i-1] = rf.test.error.loop
+# }
+```
+
+From this the best m looks to be $m=2$ or $m=3$. In addition, the bagging test error rate (i.e. when $m=\rho$) does worse.
+
 
 
 
