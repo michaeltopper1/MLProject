@@ -167,15 +167,25 @@ danny.dat %>%
 Looks like more is better here. The relationship is a little funky but overall increasing. The relationship looks best as a log relationship. So I'm going to change expansion1 to that.
 
 ```{r data.clean}
+
+top.ten.designer = danny.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
+top.ten.names = top.ten.designer$designer
+
+danny.dat = danny.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
+danny.dat = danny.dat %>% mutate_if(is.character, as.factor)
+
+
 danny.dat.use<-danny.dat %>% 
   mutate(expansion1=log(expansion1+1),
          decade = 10 * (year_published %/% 10),
          above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
          ) %>% 
-  select(c(above7,max_playtime,min_age,min_players,mechanic1,users_rated,expansion1,decade)) %>% 
+  select(c(above7,max_playtime,min_age,min_players, max_players, top.ten, mechanic1,users_rated,expansion1,decade)) %>% 
   #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
   mutate(above7=as.factor(above7)) %>% 
   drop_na()
+
+
 
 #Some mechanics have like 1 observation in them. I'm going to drop convert mechanics with less than 20 into just "other"
 cat.mut<-danny.dat.use %>% 
@@ -318,7 +328,7 @@ With a nearest neighbor of 2, we can get the test success rate up to `r sum(diag
 Now, I will do a cross validation to figure out which number of neighbors I should use.  
 ```{r KNN.cv}
 validation.error<-NULL
-allK<-1:50
+allK<-1:1
 set.seed(66)
 
 for (i in allK){ # Loop through different number of neighbors
