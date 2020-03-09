@@ -22,27 +22,58 @@ theme_set(theme_bw())
 Exploratory Data Analysis
 ```{r}
 df %>% ggplot(aes(average_rating)) +
-  geom_histogram()
+  geom_histogram(fill = "grey") +
+  geom_vline(aes(xintercept = 7), color = 'red') +
+  labs(xintercept = "Classification Cutoff", title = "Distribution of Average Ratings Across Games") +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  ylab("Count") +
+  xlab("Average Rating") +
+  theme_classic()
 
-
-df %>% 
-  mutate(above7 = as.factor(ifelse(average_rating >= 7, 1, 0))) %>% 
-  count(above7)
-
-df %>% count(publisher, sort = T)
-
-df %>% 
-  count(year_published) %>% 
-  arrange(desc(year_published)) %>% 
-  ggplot(aes(year_published, n)) +
-  geom_line() 
-
-
-df %>% filter(max_playtime < 1000) %>% ggplot(aes(max_playtime)) + 
-  geom_histogram()
-
-df %>% filter(max_playtime < 1000) %>% distinct(max_playtime) 
 ```
+
+Now going to make a graph of some possible predictors
+```{r}
+df %>% filter(max_playtime < 10000) %>% 
+  ggplot(aes(x = max_playtime, y = average_rating)) +
+  geom_point(color = 'grey') +
+  geom_smooth( se = F) +
+  geom_hline(yintercept = 7, color = 'red') +
+  labs(title = "Maxmimum Playtime and Average Rating") +
+  xlab("Maximum Playtime (minutes)") +
+  ylab("Average User Rating") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+df %>% ggplot(aes(x = users_rated, y = average_rating)) +
+  geom_point(color = 'grey') +
+  geom_smooth(se = F) +
+  geom_hline(yintercept = 7, color = 'red') +
+  labs(title = "Number of Users Rated and Average Rating") +
+  xlab("Users Rated") +
+  ylab("Average User Rating") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>%
+  ggplot(aes(x = decade, y = avgdecaderating)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', se = F) +
+  labs(title = "Average Decade Rating Over Time") +
+  xlab("Decade") +
+  ylab("Average Rating in the Decade") +
+  theme(plot.title = element_text(hjust = 0.5))  
+
+df %>% mutate(goodrating = as.factor(ifelse(average_rating >=7, 1, 0))) %>% 
+  ggplot(aes(x = goodrating, y = min_age, fill = goodrating)) +
+  geom_boxplot() +
+  labs(title = "Minimum Age and Rating", fill = "1 if rating above 7") +
+  xlab("Classifier of Good or Bad Game") +
+  ylab("Minimum Age Requirement") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+```
+
+
 
 Finding the top types of games that are created. 
 ```{r}
@@ -61,11 +92,12 @@ catcounts %>%
   mutate(value = fct_reorder(value, n)) %>% 
   top_n(20, n) %>% 
   ggplot(aes(value, n)) +
-  geom_col() +
+  geom_col(fill = 'blue') +
   coord_flip() +
   ylab("Total") +
   xlab("Board Game Type") +
-  labs(title = "Most Popular Types of Board Games")
+  labs(title = "Most Popular Types of Board Games") +
+  theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
 
@@ -79,11 +111,11 @@ df %>% mutate(decade = 10 * (year_published %/% 10)) %>%
   group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>%
   ggplot(aes(x = decade, y = avgdecaderating)) + 
   geom_point() + 
-  geom_smooth(method = 'lm') +
+  geom_smooth(method = 'lm', se = F) +
   labs(title = "Average Decade Rating Over Time") +
   xlab("Decade") +
   ylab("Average Rating in the Decade") +
-  theme(plot.title = element_text(hjust = 0.5)) 
+  theme(plot.title = element_text(hjust = 0.5))  
 
 
 ```
@@ -329,12 +361,14 @@ michael.dat = danny.dat %>%
 I am going to add in a binary variable equal to one if the game was designed by a Top 10 designer. 
 
 ```{r}
+
 top.ten.designer = michael.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
 top.ten.names = top.ten.designer$designer
 
 #added in a top ten variable
 michael.dat = michael.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
 michael.dat = michael.dat %>% mutate_if(is.character, as.factor)
+
 ```
 Testing and training data for myself.
 ```{r}
@@ -421,8 +455,8 @@ rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
 Hence, the random forest got a test error rate of `r rf.test.error`. This is substantially better than anything we have tried before.
 
 ```{r}
-varImpPlot(rf.tree, main = "Most Important Variables for the Random Forest")
-
+importanceplot = varImpPlot(rf.tree)
+importanceplot = as.data.frame(importanceplot)
 ```
 
 Now running a loop to find the best $m$.
