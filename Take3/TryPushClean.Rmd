@@ -173,15 +173,23 @@ danny.dat %>%
 Looks like more is better here. The relationship is a little funky but overall increasing. The relationship looks best as a log relationship. So I'm going to change expansion1 to that.
 
 ```{r data.clean}
+
+top.ten.designer = danny.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
+top.ten.names = top.ten.designer$designer
+
+#added in a top ten variable
+danny.dat = danny.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0)))
 danny.dat.use<-danny.dat %>% 
   mutate(expansion1=log(expansion1+1),
          decade = 10 * (year_published %/% 10),
          above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
          ) %>% 
-  select(c(above7,max_playtime,min_age,min_players,mechanic1,users_rated,expansion1,decade)) %>% 
+  select(c(above7,max_playtime,min_age,min_players, max_players,top.ten, mechanic1,users_rated,expansion1,decade)) %>% 
   #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
   mutate(above7=as.factor(above7)) %>% 
   drop_na()
+
+
 
 #Some mechanics have like 1 observation in them. I'm going to drop convert mechanics with less than 20 into just "other"
 cat.mut<-danny.dat.use %>% 
@@ -208,6 +216,8 @@ test.dat<-danny.dat.use[test,]
 
 #DO NOT TOUCH THIS UNTIL THE VERY VERY END. 
 validation.dat<-danny.dat.use[-c(train,test),]
+validation.dat  = validation.dat %>% mutate_if(is.character, as.factor)
+
 
 ```
 
@@ -324,7 +334,7 @@ With a nearest neighbor of 2, we can get the test success rate up to `r sum(diag
 Now, I will do a cross validation to figure out which number of neighbors I should use.  
 ```{r KNN.cv}
 validation.error<-NULL
-allK<-1:50
+allK<-1:1
 set.seed(66)
 
 for (i in allK){ # Loop through different number of neighbors
@@ -392,7 +402,7 @@ test.dat.m<-michael.dat[-train.m,]
 Now I am going to make the tree.
 ```{r}
 library(tree)
-tree.fit = tree(above7 ~. -designer, data = train.dat.m)
+tree.fit = tree(above7 ~., data = train.dat)
 summary(tree.fit)
 plot(tree.fit)
 text(tree.fit, pretty = 0, cex = 0.7)
@@ -401,10 +411,10 @@ title("Classification Tree Built on Training Set")
 
 Now to fit this to the testing data
 ```{r}
-yhat.testset = predict(tree.fit, data = test.dat.m, type = 'class')
+yhat.testset = predict(tree.fit, newdata = test.dat, type = 'class')
 
 #Obtaining a confusion matrix
-error.tree = table(yhat.testset, test.dat.m$above7)
+error.tree = table(yhat.testset, test.dat$above7)
 tree.accuracy = sum(diag(error.tree)/sum(error.tree))
 tree.error.rate = 1 - tree.accuracy
 ```
@@ -430,8 +440,8 @@ title("Pruned Tree Using CV for Optimal Size")
 
 Predicting on the pruned tree:
 ```{r}
-pred.prune = predict(tree.prune, data = test.dat.m, type = 'class')
-error.prune = table(pred.prune, test.dat.m$above7)
+pred.prune = predict(tree.prune, newdata = test.dat, type = 'class')
+error.prune = table(pred.prune, test.dat$above7)
 prune.accuracy = sum(diag(error.prune))/sum(error.prune)
 prune.error.rate = 1 - prune.accuracy
 ```
@@ -443,8 +453,9 @@ Therefore, the prune test error is `r prune.error.rate`. This looks to be very s
 Now to try random forests.
 ```{r}
 library(randomForest)
-
-rf.tree = randomForest(above7 ~. -designer, data = train.dat.m, mtry = 3, ntree = 500, importance = T)
+train.dat = train.dat %>% mutate_if(is.character, as.factor)
+test.dat = test.dat %>% mutate_if(is.character, as.factor)
+rf.tree = randomForest(above7 ~., data = train.dat, mtry = 3, ntree = 500, importance = T)
 
 plot(rf.tree)
 ```
@@ -452,8 +463,8 @@ plot(rf.tree)
 
 Now going to get the test error rate for the random forest.
 ```{r}
-yhat.rf = predict(rf.tree, newdata = test.dat.m)
-rf.err = table(pred = yhat.rf, truth = test.dat.m$above7)
+yhat.rf = predict(rf.tree, newdata = test.dat)
+rf.err = table(pred = yhat.rf, truth = test.dat$above7)
 rf.err
 rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
 ```
