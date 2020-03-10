@@ -22,6 +22,9 @@ library(class)
 library(ggpubr)
 library(kableExtra)
 library(memisc)
+library(expss)
+#library(rpart)
+#library(partykit)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
 select = dplyr::select
 theme_set(theme_bw())
@@ -52,8 +55,20 @@ cat.mut<-danny.dat.use %>%
   summarise(n=n()) %>% 
   filter(n<20)
 
-danny.dat.use<-danny.dat.use %>% 
-  mutate(mechanic1=ifelse(mechanic1 %in% cat.mut$mechanic1, "other",mechanic1))
+danny.dat.use <- danny.dat.use %>% 
+  mutate(mechanic1 = ifelse(mechanic1 %in% cat.mut$mechanic1, "other",mechanic1)) %>% 
+   apply_labels(.,
+                      above7 = "Above 7",
+                      max_playtime = "Max Playtime",
+                      min_age = "Minimum Age",
+                      min_players = "Minimum Players",
+                      max_players = "Maximum Players",
+                      top.ten = "Top 10 Creators",
+                      mechanic1 = "Game Mechanics",
+                      users_rated = "Number User Rated",
+                      expansion1 = "Number of Expansions",
+                      decade = "Decade"
+)
 
 ```
 
@@ -69,8 +84,10 @@ train.dat<-danny.dat.use[train,]
 test.dat<-danny.dat.use[test,]
 
 #DO NOT TOUCH THIS UNTIL THE VERY VERY END. 
-validation.dat<-danny.dat.use[-c(train,test),]
-validation.dat  = validation.dat %>% mutate_if(is.character, as.factor)
+validation.dat <- danny.dat.use[-c(train,test),]
+validation.dat  = validation.dat %>% 
+  mutate_if(is.character, as.factor) %>% 
+  mutate(above7=as.numeric(above7)-1)
 
 
 ```
@@ -89,17 +106,6 @@ Board games suffered a significant reduction in sales upon the spread of the sma
 Our data set on board games comes from the Board Game Geek database. This data set was published on the R for Datascience Github page for their Tidy Tuesday-a weekly event in which a new public data set is posted for any user to perform analysis on. In particular, this data set features games with at least 50 ratings for games published between the years 1950 and 2016. Surprisingly, this results in 10,532 games. The data features information on the following important variables: a description of the game, maximum number of plays, maximum playtime, minimum age, minimum playtime, year published, artist used for the game art, category of the game, family of the game, average rating, number of users rated, and publisher. Overall, the raw data possesses 22 variables, although we only performed machine learning techniques using 9 covariates. Many of the variables were duplicated into "new" variable names, creating the illusion of more information than was truly available. For instance, there were two variables that included identical information but were labeled differently as "max playtime" and "playing time".  We excluded the duplicates from the analysis. 
 
 ## Exploratory Analysis
-
-```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
-df %>% ggplot(aes(average_rating)) +
-  geom_histogram(fill = "grey") +
-  geom_vline(aes(xintercept = 7), color = 'red') +
-  labs(xintercept = "Classification Cutoff") +
-  theme(plot.title = element_text(hjust = 0.5))  +
-  ylab("Count") +
-  xlab("Average Rating") +
-  theme_classic()
-```
 
 Before building our machine learning models, we first performed exploratory analysis. To begin, we plotted several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
 
@@ -172,7 +178,7 @@ In addition, we also created several other graphs to get a better feel for the d
     \item \textit{What were the most popular types of board games and does type effect the rating?}
 \end{enumerate}
 
-```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
+```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=7}
 df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
   filter(decade > 1950) %>% 
   filter(designer != '(Uncredited)') %>% 
@@ -331,25 +337,26 @@ best = rate$Cutoff[index]
 
 best.pred <- mean(as.numeric(prob.test > best) == test.dat$above7)
 ```
+
 The red dotted line is the *false negative* rate while the black solid line is the *false positive* rate. The optimal threshold is chosen by minizing the Euclidean distance of the two curves from 0.
 
 The best value to use as a cutoff is `r round(best,3)` with a  success rate of `r round(best.pred,3)`. This is the best cutoff value using the test set.
 
 ## KNN
 
-
+*K Nearest Neighbors (KNN)* predicts by matching known observations with an observation we want to predict. KNN works very intuitively: if asked what one observation will act live, use those most similar to it. The difficulty of KNN is choosing the optimal number of neighbors. The key here is to minimize the MSE by choosing the optimal number of k. We start by looking just at k=2.
 
 ```{r KNN.setup}
 Ytrain <- train.dat$above7
 Xtrain <- train.dat %>% select(-above7) %>% 
   dummy_cols(., remove_selected_columns = TRUE)
-Xtrain <- scale(Xtrain,center=TRUE, scale = TRUE)
+Xtrain <- scale(Xtrain,center = TRUE, scale = TRUE)
 
 Ytest <- test.dat$above7
 Xtest <- test.dat %>% 
   select(-above7) %>% 
   dummy_cols(., remove_selected_columns = TRUE) %>% 
-  scale(center=TRUE, scale=TRUE)
+  scale(center = TRUE, scale = TRUE)
 
 ```
 
@@ -360,16 +367,16 @@ conf.train <- table(predicted = pred.ytrain,observed = Ytrain)
 ```
 
 ```{r KNN.test.2}
-pred.ytest<-knn(train=Xtrain, test=Xtest, cl=Ytrain, k=2)
+pred.ytest <- knn(train = Xtrain, test = Xtest, cl = Ytrain, k = 2)
 
-conf.test<-table(predicted=pred.ytest,observed=Ytest)
+conf.test <- table(predicted = pred.ytest,observed = Ytest)
 ```
 
 The training error with 2 neighbors is `r sum(diag(conf.train)/sum(conf.train))`. The true positive rate is `r round(conf.train[1,1]/sum(conf.train[,1]),3)` and the false positive rate is `r round(conf.train[1,2]/sum(conf.train[1,]),3)`.
 
 The test error with 2 neighbors is `r sum(diag(conf.test)/sum(conf.test))`. The true positive rate is `r round(conf.test[1,1]/sum(conf.test[,1]),3)` and the false positive rate is `r round(conf.test[1,2]/sum(conf.test[1,]),3)`.
 
-```{r KNN.cv}
+```{r KNN.cv, cache=TRUE}
 validation.error <- NULL
 allK <- 1:35
 set.seed(66)
@@ -394,7 +401,7 @@ However, the odds of 2 being the correct number of neighbors is very slim. In or
     \item choose the number of neighbors (k) that minimized average error rate.
 \end{enumerate}
 
-This process can easily be plotted:
+This can be easily graphed. However, visually identifying the optimal number of neighbors is near impossible. Instead, we result to identifying the maximium
 
 ```{r neibor_graph, fig.cap="Neighbor Graph"}
 kn_graph <- tibble(
@@ -414,12 +421,15 @@ set.seed(67)
 pred.YTest = knn(train = Xtrain, test = Xtest, cl = Ytrain, k = numneighbor)
 
 conf.matrix = table(predicted = pred.YTest, true = Ytest) 
-kable(conf.matrix)
+
+kable(conf.matrix, caption = "Test Confusion Matrix", align = c("c","c"), col.names = c("0","1")) %>% 
+  kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") 
 ```
 
 KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
 
 ## Decision Trees
+
 ecision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
 
 
@@ -451,6 +461,7 @@ tree.prune = prune.misclass(tree.fit, best = optimal.size)
 plot(tree.prune)
 text(tree.prune, pretty = 0, cex = 0.8)
 title(" ")
+
 ```
 ```{r}
 pred.prune = predict(tree.prune, newdata = test.dat, type = 'class')
@@ -458,8 +469,6 @@ error.prune = table(pred.prune, test.dat$above7)
 prune.accuracy = sum(diag(error.prune))/sum(error.prune)
 prune.error.rate = 1 - prune.accuracy
 ```
-
-
 
 
 
@@ -530,16 +539,71 @@ ggarrange(mean.gini, mean.accuracy)
 
 
 When $mtry = 3$ we found that our misclassification rate was `r round(rf.test.error, 3)`. This was a significant upgrade from our previous decision tree method. To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. 
+
 ## Random Forest/Bagging
 
 Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
 
 
 
-# Discussion
+# Conclusion
 
+We have presented four machine learning methods to predict which board games will score above a 7.5. We first observed the data, identified key variables, and tranformed when necessary. We then split the data into training (50%), testing (25%), and validation (25%). We will now present the validation results and determine an optimal model:
+
+```{r VAlidation_make}
+#Logit
+
+logit.valid <- round(predict(glm.fit, newdata = validation.dat, type = "response"),digits = 5) 
+logit.pred <- as.numeric(logit.valid > best)
+logit_error <- mean((validation.dat$above7 != logit.pred))
+
+#KNN
+
+Yvalid <- validation.dat$above7
+Xvalid <- validation.dat %>% 
+  select(-above7) %>% 
+  dummy_cols(., remove_selected_columns = TRUE) %>% 
+  scale(center = TRUE, scale = TRUE)
+
+pred.ytest.val <- knn(train = Xtrain, test = Xvalid, cl = Ytrain, k = numneighbor)
+KNN_error <- mean(pred.ytest.val != Yvalid)
+
+# Tree
+
+pred.prune.val = predict(tree.prune, newdata = validation.dat, type = 'class')
+error.prune.val = table(pred.prune.val, validation.dat$above7)
+prune.accuracy.val = sum(diag(error.prune.val))/sum(error.prune.val)
+tree_error = 1 - prune.accuracy.val
+
+# Random Forest
+
+yhat.rf.v = predict(rf.tree, newdata = validation.dat)
+rf.err.v = table(pred = yhat.rf.v, truth = validation.dat$above7)
+rf_error = 1 - sum(diag(rf.err.v))/sum(rf.err.v)
+
+validation_table <- tibble("Method" = c("Logistic","KNN","Tree","Random Forest"),
+                         "Validation Error Rate" = round(c(logit_error,KNN_error,tree_error,rf_error),3)
+)
+
+kable(validation_table, caption = "Validation Error Rate", align = c("c","c")) %>% 
+  kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") %>% 
+    row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")
+```
+
+For this dataset, logistic performed the worst. KNN and tree performed relatively similar while Random Forest was the obvious winner. Given this dataset, we would recommend using Random Forest to predict future quality board games. The major benefit of Random Forest is the ensemble nature: by aggregating many trees the method is able to add precision to out of sample modeling. In conclusions, use Random Forest the next time you want to play a new board game to guarantee it's a banger.
 
 # Appendix
+
+```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
+df %>% ggplot(aes(average_rating)) +
+  geom_histogram(fill = "grey") +
+  geom_vline(aes(xintercept = 7), color = 'red') +
+  labs(xintercept = "Classification Cutoff") +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  ylab("Count") +
+  xlab("Average Rating") +
+  theme_classic()
+```
 
 ```{r logit_regression}
 mtable(mod_logit)
