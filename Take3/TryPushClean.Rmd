@@ -320,7 +320,7 @@ cutoff = performance(pred, "fpr")@x.values[[1]] # FNR
 fnr = performance(pred,"fnr")@y.values[[1]]
 
 matplot(cutoff, cbind(fpr,fnr), type = "l",lwd = 2, xlab = "Threshold",ylab = "Error Rate") # Add legend to the plot 
-legend("topright",legend = c("False Positive Rate","False Negative Rate"), col = c(1,2), lty = c(1,2))
+#legend("topright",legend = c("False Positive Rate","False Negative Rate"), col = c(1,2), lty = c(1,2))
 
 
 rate = as.data.frame(cbind(Cutoff = cutoff, FPR = fpr, FNR = fnr)) 
@@ -328,12 +328,12 @@ rate$distance = sqrt((rate[,2])^2 + (rate[,3])^2)
 
 index = which.min(rate$distance) 
 best = rate$Cutoff[index] 
-best 
 
 best.pred <- mean(as.numeric(prob.test > best) == test.dat$above7)
 ```
+The red dotted line is the *false negative* rate while the black solid line is the *false positive* rate. The optimal threshold is chosen by minizing the Euclidean distance of the two curves from 0.
 
-The best value to use as a cutoff is `r best` with a  success rate of `r best.pred`. This is the best cutoff value using the test set.
+The best value to use as a cutoff is `r round(best,3)` with a  success rate of `r round(best.pred,3)`. This is the best cutoff value using the test set.
 
 ## KNN
 
@@ -354,9 +354,9 @@ Xtest <- test.dat %>%
 ```
 
 ```{r KNN.train.2}
-pred.ytrain <- knn(train = Xtrain, test = Xtrain, cl = Ytrain, k=2)
+pred.ytrain <- knn(train = Xtrain, test = Xtrain, cl = Ytrain, k = 2)
 
-conf.train <- table(predicted=pred.ytrain,observed=Ytrain)
+conf.train <- table(predicted = pred.ytrain,observed = Ytrain)
 ```
 
 ```{r KNN.test.2}
@@ -365,15 +365,13 @@ pred.ytest<-knn(train=Xtrain, test=Xtest, cl=Ytrain, k=2)
 conf.test<-table(predicted=pred.ytest,observed=Ytest)
 ```
 
-`r kable(conf.test)`
-
 The training error with 2 neighbors is `r sum(diag(conf.train)/sum(conf.train))`. The true positive rate is `r round(conf.train[1,1]/sum(conf.train[,1]),3)` and the false positive rate is `r round(conf.train[1,2]/sum(conf.train[1,]),3)`.
 
 The test error with 2 neighbors is `r sum(diag(conf.test)/sum(conf.test))`. The true positive rate is `r round(conf.test[1,1]/sum(conf.test[,1]),3)` and the false positive rate is `r round(conf.test[1,2]/sum(conf.test[1,]),3)`.
 
 ```{r KNN.cv}
 validation.error <- NULL
-allK <- 1:1
+allK <- 1:35
 set.seed(66)
 
 for (i in allK) { # Loop through different number of neighbors
@@ -385,7 +383,30 @@ numneighbor = max(allK[validation.error == min(validation.error)])
 
 ```
 
-However, the odds of 2 being the correct number of neighbors is very slim. In order ot determine the correct number of neighbors, L One Out Cross Validation (LOOCV) is employed. The optimal number of neighbors determined using LOOCV is `r numneighbor`.
+However, the odds of 2 being the correct number of neighbors is very slim. In order ot determine the correct number of neighbors, Leave One Out Cross Validation (LOOCV) is employed. LOOCV works in the following steps:
+
+\begin{enumerate}
+    \item Remove one observations as a holdout
+    \item Create a KNN model for many k
+    \item predict using the models on the one observation holdout
+    \item record the error for each model
+    \item Repeat for each observation
+    \item choose the number of neighbors (k) that minimized average error rate.
+\end{enumerate}
+
+This process can easily be plotted:
+
+```{r neibor_graph, fig.cap="Neighbor Graph"}
+kn_graph <- tibble(
+  "Neighbors" = allK,
+  "Error Rate" = validation.error
+)
+ggplot(kn_graph, aes(x = Neighbors, y = `Error Rate`)) +
+  geom_line()
+
+```
+
+The optimal number of neighbors determined using LOOCV is `r numneighbor`. Using the optimal number of neighbors, we can produce the test confusion matrix and test error rate:
 
 ```{r KNN.actual}
 set.seed(67)
