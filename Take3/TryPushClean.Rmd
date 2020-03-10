@@ -6,12 +6,15 @@ output:
     fig_caption: TRUE
     fig_width: 6
     fig_height: 3
+bibliography: references.bib
 editor_options: 
   chunk_output_type: console
+header_includes:
+  \usepackage{float}
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE,  message = FALSE, cache = TRUE, warning = FALSE)
+knitr::opts_chunk$set(echo = FALSE,  message = FALSE, cache = TRUE, warning = FALSE, fig.pos = "H")
 library(tidyverse)
 library(dplyr)
 library(fastDummies)
@@ -19,6 +22,7 @@ library(ROCR)
 library(class)
 library(ggpubr)
 library(kableExtra)
+library(memisc)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
 
 theme_set(theme_bw())
@@ -77,6 +81,13 @@ validation.dat  = validation.dat %>% mutate_if(is.character, as.factor)
 
 # Introduction
 
+Social interaction is on the decline. According to recent a recent study using a nationally representative sample of U.S. adolescents and college students, researchers [@twenge2019less] found that adolescences in the 2010s spent significantly less time socializing with their peers than their previous generation counterparts. Specifically, college-bound high school seniors spent less than an hour a day engaging in in-person social interaction. This decline can largely be attributed to the rise of technology. 
+
+
+The ubiquity of technology has been linked to stymieing the collaborative benefits that social interaction bring. For instance, one study found that non-digital playtime in children lead to increases in creative thinking [@hitron2018digital]. Therefore, with the tech giants constantly battling each other for every second of our attention, it is imperative that human-on-human interaction still plays a major role in everyday life. One of the classic ways to achieve this important interaction is with board games.
+
+Board games suffered a significant reduction in sales upon the spread of the smartphone. However, this trend has recently been reversed [@jolin_2016]. To aid this reverse, we sought to predict whether board games will be rated highly by their users. This information would be crucial so that the board game developers can remain relevant, and human interaction can be salvaged. To answer whether we can predict "what makes a good board game" we utilized four different machine learning techniques: logistic regression, k-nearest neighbors, decision trees, and random forests. Our main results found that 
+
 # Data
 
 Our data set on board games comes from the Board Game Geek database. This data set was published on the R for Datascience Github page for their Tidy Tuesday-a weekly event in which a new public data set is posted for any user to perform analysis on. In particular, this data set features games with at least 50 ratings for games published between the years 1950 and 2016. Surprisingly, this results in 10,532 games. The data features information on the following important variables: a description of the game, maximum number of plays, maximum playtime, minimum age, minimum playtime, year published, artist used for the game art, category of the game, family of the game, average rating, number of users rated, and publisher. Overall, the raw data possesses 22 variables, although we only performed machine learning techniques using 9 covariates. Many of the variables were duplicated into "new" variable names, creating the illusion of more information than was truly available. For instance, there were two variables that included identical information but were labeled differently as "max playtime" and "playing time".  We excluded the duplicates from the analysis. 
@@ -96,8 +107,8 @@ df %>% ggplot(aes(average_rating)) +
 
 Before building our machine learning models, we first performed exploratory analysis. To begin, We started plotting several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
 
-
-```{r features_graphs}
+We first will highlight four main features: *Maximum Playtime (minutes)*, *Users Rated*, *Decade*, and *Number of Expansions*. We chose to use maximum playtime over minimum or average because we thought it was the most representative of the game playing experience. In addition, minimum and average are expected to be highly correlated with maximum so including one would suffice for predictive power. *User Rated* refers to the number of individuals that rated the game. This serves as a proxy for popularity of the game. *Decade* was a transformed variable from *date released*. We assumed there were some sort of generational fixed effects involved in the evolution of board games hopefully captured by *Decade*. Finally, we transformed *Expansions* to *Number of Expansions*. Good games tend to have more expansions than bad games so the magnituded was an appealing feature. The relationship was initially exponential; a few games had lots of expansions and were rated very high. To account for this, the number of expansions was logged. This created a linear relationship for analysis.
+```{r features_graphs_maker}
 playtime<-df %>% filter(max_playtime < 10000) %>% 
   ggplot(aes(x = max_playtime, y = average_rating)) +
   geom_point(color = 'grey') +
@@ -133,7 +144,7 @@ expansion <- danny.dat %>%
 
 ```
 
-```{r, fig.cap = "Relationship of Features", fig.width=6, fig.height=3}
+```{r, fig.cap = "Relationship of Sample Features", fig.width=6, fig.height=3}
 annotate_figure(ggarrange(playtime,user_rate,year, expansion),
   left = text_grob("Average Ratings", rot = 90)
 )
@@ -150,6 +161,40 @@ df %>% mutate(goodrating = as.factor(ifelse(average_rating >= 7, 1, 0))) %>%
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
+
+```{r}
+mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
+```
+
+
+
+In addition, we also created several other graphs to get a better feel for the data. Some of the questions we were interested in answering were: 
+
+\begin{enumerate}
+    \item \textit{Were there any popular designers in each decade and did these designers have an effect on the rating?}
+    \item \textit{What were the most popular types of board games and does type effect the rating?}
+\end{enumerate}
+
+```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
+df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  filter(decade > 1950) %>% 
+  filter(designer != '(Uncredited)') %>% 
+  group_by(decade) %>% 
+  count(designer, sort = T) %>%  
+  filter(!is.na(designer)) %>% 
+  arrange(desc(n)) %>% 
+  top_n(5, n) %>% 
+  ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
+  geom_col() +
+  facet_wrap(~decade) +
+  coord_flip() +
+  labs(fill = "Decade") +
+  xlab("") +
+  ylab("Count")
+
+```
+
+We look at the types of games included. The majority of games were *Card Games*, followed by *Wargames*, and *Fantasy*. An initial concern is that there are many games that have very specific types. For example, *Connection Games* has 19 observations. This will lead to issues in cross validation. Because of this, we group all categories under a threshold as *Other*.
 
 ```{r pop_type, fig.cap="Most Popular Types of Board Games", fig.width=6, fig.height=3}
 catvars = df %>% 
@@ -174,41 +219,6 @@ catcounts %>%
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
-
-```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
-df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
-  filter(decade > 1950) %>% 
-  filter(designer != '(Uncredited)') %>% 
-  group_by(decade) %>% 
-  count(designer, sort = T) %>%  
-  filter(!is.na(designer)) %>% 
-  arrange(desc(n)) %>% 
-  top_n(5, n) %>% 
-  ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
-  geom_col() +
-  facet_wrap(~decade) +
-  coord_flip() +
-  labs(fill = "Decade") +
-  xlab("") +
-  ylab("Count")
-
-```
-
-
-```{r}
-mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
-```
-
-
-
-In addition, we also created several other graphs to get a better feel for the data. Some of the questions we were interested in answering were: 
-
-\begin{enumerate}
-    \item \textit{Were there any popular designers in each decade and did these designers have an effect on the rating?}
-    \item \textit{What were the most popular types of board games and does type effect the rating?}
-\end{enumerate}
-
-TALK ABOUT THE PLOTS HERE.
 
 ## Final Predictors
 
@@ -236,24 +246,21 @@ To begin, we first made a classifier for whether a game had an average user scor
  
 ## Logistic Regression
 
-## K-Nearest Neighbor
+To begin, we run a logistic regression using the variables described above. The training rate versus cutoff is displayed below. The formula is:
 
-## Decision Trees
+$$Pr(Above=1|X)=\frac{e^{X^T\beta}}{1+e^{X^T\beta}}$$
 
-Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree looks like PREDICTION TREE GRAPH. This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of TREE.ERROR.RATE. 
-To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was OPTIMAL.SIZE. Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was PRUNE.ERROR.RATE. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. 
+```{r}
+mod_logit<-glm(above7~.,data = train.dat, family = binomial(link = "logit"))
+summ<-summary(mod_logit)
+a<-summ$coefficients
 
-## Random Forest/Bagging
+```
 
-Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
-
-
+where $X^T$ is the list of variables described before. Highly significant features in the training set (defined as having a p-value less than .001) are: **`r row.names(a)[which(a[,4]<.001)]`**. A full regression breakdown can be found at the end of the analysis.
 
 
 
-# Logistic Regression
-
-To begin, we run a logistic regression using the variables described above. The training rate versus cutoff is displayed below
 
 ```{r train.logit}
 y.hat <- predict(glm(above7~.,data = train.dat, family = binomial(link = "logit")), type = "response")
@@ -325,7 +332,7 @@ best.pred <- mean(as.numeric(prob.test > best) == test.dat$above7)
 
 The best value to use as a cutoff is `r best` with a  success rate of `r best.pred`. This is the best cutoff value using the test set.
 
-# KNN
+## KNN
 
 
 
@@ -388,6 +395,20 @@ kable(conf.matrix)
 
 KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
 
+## Decision Trees
+
+Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree looks like PREDICTION TREE GRAPH. This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of TREE.ERROR.RATE. 
+To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was OPTIMAL.SIZE. Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was PRUNE.ERROR.RATE. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. 
+
+## Random Forest/Bagging
+
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
+
+
+
+
+
+
 # Decision Trees by Mikey Boi
 ```{r}
 michael.dat = danny.dat %>% 
@@ -395,7 +416,7 @@ michael.dat = danny.dat %>%
          decade = 10 * (year_published %/% 10),
          above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
          ) %>% 
-  select(c(above7,max_playtime,min_age,min_players, max_players, designer, mechanic1,users_rated,expansion1,decade)) %>% 
+  dplyr::select(c(above7,max_playtime,min_age,min_players, max_players, designer, mechanic1,users_rated,expansion1,decade)) %>% 
   #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
   mutate(above7=as.factor(above7)) %>% 
   drop_na()
@@ -521,3 +542,15 @@ From this the best m looks to be $m=2$ or $m=3$. In addition, the bagging test e
 
 
 
+
+
+# Discussion
+
+
+# Appendix
+
+```{r logit_regression}
+mtable(mod_logit)
+```
+
+# Cited
