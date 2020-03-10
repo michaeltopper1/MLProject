@@ -4,7 +4,9 @@ author:
   - Danny Klinenberg 7626054
   - Michael Topper 95788708
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
-output: pdf_document
+output: 
+  pdf_document:
+      fig_caption: TRUE
 bibliography: references.bib
 nocite: '@*'
 ---

@@ -2,7 +2,9 @@
 title: "Cleaning"
 author: "Michael Topper"
 date: "3/4/2020"
-output: pdf_document
+output: 
+  pdf_document:
+          fig_caption: TRUE
 editor_options: 
   chunk_output_type: console
 ---
