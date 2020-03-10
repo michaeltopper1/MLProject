@@ -1,178 +1,33 @@
 ---
 title: "Cleaning"
 author: "Michael Topper and Danny Klinenberg"
-output: pdf_document
+output: 
+  pdf_document:
+    fig_caption: TRUE
+    fig_width: 6
+    fig_height: 3
 editor_options: 
   chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = FALSE,  message = FALSE, cache = TRUE, warning = FALSE)
 library(tidyverse)
 library(dplyr)
 library(fastDummies)
 library(ROCR)
 library(class)
+library(ggpubr)
+library(kableExtra)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
 
 theme_set(theme_bw())
 ```
 
-
-# Exploratory Data Analysis
-
-
-I have some workds
-
-```{r}
-df %>% ggplot(aes(average_rating)) +
-  geom_histogram(fill = "grey") +
-  geom_vline(aes(xintercept = 7), color = 'red') +
-  labs(xintercept = "Classification Cutoff", title = "Distribution of Average Ratings Across Games") +
-  theme(plot.title = element_text(hjust = 0.5))  +
-  ylab("Count") +
-  xlab("Average Rating") +
-  theme_classic()
-
-```
-
-I have more words
-
-Now going to make a graph of some possible predictors
-```{r}
-df %>% filter(max_playtime < 10000) %>% 
-  ggplot(aes(x = max_playtime, y = average_rating)) +
-  geom_point(color = 'grey') +
-  geom_smooth( se = F) +
-  geom_hline(yintercept = 7, color = 'red') +
-  labs(title = "Maxmimum Playtime and Average Rating") +
-  xlab("Maximum Playtime (minutes)") +
-  ylab("Average User Rating") +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-df %>% ggplot(aes(x = users_rated, y = average_rating)) +
-  geom_point(color = 'grey') +
-  geom_smooth(se = F) +
-  geom_hline(yintercept = 7, color = 'red') +
-  labs(title = "Number of Users Rated and Average Rating") +
-  xlab("Users Rated") +
-  ylab("Average User Rating") +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
-  group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>%
-  ggplot(aes(x = decade, y = avgdecaderating)) + 
-  geom_point() + 
-  geom_smooth(method = 'lm', se = F) +
-  labs(title = "Average Decade Rating Over Time") +
-  xlab("Decade") +
-  ylab("Average Rating in the Decade") +
-  theme(plot.title = element_text(hjust = 0.5))  
-
-df %>% mutate(goodrating = as.factor(ifelse(average_rating >=7, 1, 0))) %>% 
-  ggplot(aes(x = goodrating, y = min_age, fill = goodrating)) +
-  geom_boxplot() +
-  labs(title = "Minimum Age and Rating", fill = "1 if rating above 7") +
-  xlab("Classifier of Good or Bad Game") +
-  ylab("Minimum Age Requirement") +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-```
-
-
-
-Finding the top types of games that are created. 
-```{r}
-catvars = df %>% 
-  select(game_id, name, family, expansion, category, artist, designer, average_rating) %>% 
-  gather(type, value, -game_id, -name) %>% 
-  filter(!is.na(value)) %>% 
-  separate_rows(value, sep = ',') %>% 
-  arrange(game_id)
-
-catcounts = catvars %>% 
-  count(type, value,  sort = T)
-
-catcounts %>% 
-  filter(type == 'category') %>% 
-  mutate(value = fct_reorder(value, n)) %>% 
-  top_n(20, n) %>% 
-  ggplot(aes(value, n)) +
-  geom_col(fill = 'blue') +
-  coord_flip() +
-  ylab("Total") +
-  xlab("Board Game Type") +
-  labs(title = "Most Popular Types of Board Games") +
-  theme(plot.title = element_text(hjust = 0.5)) 
-```
-
-
-
-
-
-
-Making a bar graph of decade 
-```{r}
-df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
-  group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>%
-  ggplot(aes(x = decade, y = avgdecaderating)) + 
-  geom_point() + 
-  geom_smooth(method = 'lm', se = F) +
-  labs(title = "Average Decade Rating Over Time") +
-  xlab("Decade") +
-  ylab("Average Rating in the Decade") +
-  theme(plot.title = element_text(hjust = 0.5))  
-
-
-```
-
-Designers by decade.
-```{r}
-df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
-  filter(decade > 1950) %>% 
-  filter(designer != '(Uncredited)') %>% 
-  group_by(decade) %>% 
-  count(designer, sort = T) %>%  
-  filter(!is.na(designer)) %>% 
-  arrange(desc(n)) %>% 
-  top_n(5, n) %>% 
-  ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
-  geom_col() +
-  facet_wrap(~decade) +
-  coord_flip() +
-  labs(fill = "Decade", title = "Top 5 Designers by Decade") +
-  xlab("Designer") +
-  ylab("Count")
-
-```
-
-
-Publisher and mechanics
-```{r}
-mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
-
-mechanics %>% 
-  group_by(game_id) %>% count(mechanic, sort = T)
-```
-
-
-# Danny Cleaning
-
-Let's just use the first mechanic the main mechanic and then count the number of expansions each game has
-```{r data.make}
-danny.dat<-df %>% 
+```{r data.clean}
+danny.dat <- df %>%
   separate(.,mechanic, "mechanic1",sep=",",extra="drop") %>% #Just grabbing the first mechanic for our purposes 
   mutate(expansion1=ifelse(is.na(expansion),0,str_count(df$expansion,",")))
-```
-```{r expansion.relationship}
-danny.dat %>%
-  ggplot(., aes(I(log(expansion1+1)), average_rating))+
-  geom_point()+
-  geom_smooth()
-```
-Looks like more is better here. The relationship is a little funky but overall increasing. The relationship looks best as a log relationship. So I'm going to change expansion1 to that.
-
-```{r data.clean}
 
 top.ten.designer = danny.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
 top.ten.names = top.ten.designer$designer
@@ -202,7 +57,6 @@ danny.dat.use<-danny.dat.use %>%
 
 ```
 
-# Training and Testing
 
 ```{r train.test}
 set.seed(4)
@@ -221,146 +75,318 @@ validation.dat  = validation.dat %>% mutate_if(is.character, as.factor)
 
 ```
 
+# Introduction
+
+# Data
+
+Our data set on board games comes from the Board Game Geek database. This data set was published on the R for Datascience Github page for their Tidy Tuesday-a weekly event in which a new public data set is posted for any user to perform analysis on. In particular, this data set features games with at least 50 ratings for games published between the years 1950 and 2016. Surprisingly, this results in 10,532 games. The data features information on the following important variables: a description of the game, maximum number of plays, maximum playtime, minimum age, minimum playtime, year published, artist used for the game art, category of the game, family of the game, average rating, number of users rated, and publisher. Overall, the raw data possesses 22 variables, although we only performed machine learning techniques using 9 covariates. Many of the variables were duplicated into "new" variable names, creating the illusion of more information than was truly available. For instance, there were two variables that included identical information but were labeled differently as "max playtime" and "playing time".  We excluded the duplicates from the analysis. 
+
+## Exploratory Analysis
+
+```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
+df %>% ggplot(aes(average_rating)) +
+  geom_histogram(fill = "grey") +
+  geom_vline(aes(xintercept = 7), color = 'red') +
+  labs(xintercept = "Classification Cutoff") +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  ylab("Count") +
+  xlab("Average Rating") +
+  theme_classic()
+```
+
+Before building our machine learning models, we first performed exploratory analysis. To begin, We started plotting several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
+
+
+```{r features_graphs}
+playtime<-df %>% filter(max_playtime < 10000) %>% 
+  ggplot(aes(x = max_playtime, y = average_rating)) +
+  geom_point(color = 'grey') +
+  geom_smooth( se = F) +
+  geom_hline(yintercept = 7, color = 'red') +
+  xlab("Maximum Playtime (minutes)") +
+  ylab("")+
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+user_rate<-df %>% ggplot(aes(x = users_rated, y = average_rating)) +
+  geom_point(color = 'grey') +
+  geom_smooth(se = F) +
+  geom_hline(yintercept = 7, color = 'red') +
+  xlab("Users Rated") +
+  ylab("")+
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+year <- df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  group_by(decade) %>% summarise(min_average_players = mean(min_players), avgdecaderating = mean(average_rating)) %>%
+  ggplot(aes(x = decade, y = avgdecaderating)) + 
+  geom_point() + 
+  geom_smooth(method = 'lm', se = F) +
+  xlab("Decade") +
+  ylab("")+
+  theme(plot.title = element_text(hjust = 0.5))  
+
+expansion <- danny.dat %>%
+  ggplot(., aes(I(log(expansion1 + 1)), average_rating)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  ylab("")+
+  xlab("ln(Number Expansions)") 
+
+```
+
+```{r, fig.cap = "Relationship of Features", fig.width=6, fig.height=3}
+annotate_figure(ggarrange(playtime,user_rate,year, expansion),
+  left = text_grob("Average Ratings", rot = 90)
+)
+```
+
+
+```{r decade_graph, fig.width=6, fig.height=3, include=FALSE}
+df %>% mutate(goodrating = as.factor(ifelse(average_rating >= 7, 1, 0))) %>% 
+  ggplot(aes(x = goodrating, y = min_age, fill = goodrating)) +
+  geom_boxplot() +
+  labs(title = "Minimum Age and Rating", fill = "1 if rating above 7") +
+  xlab("Classifier of Good or Bad Game") +
+  ylab("Minimum Age Requirement") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+
+```{r pop_type, fig.cap="Most Popular Types of Board Games", fig.width=6, fig.height=3}
+catvars = df %>% 
+  select(game_id, name, family, expansion, category, artist, designer, average_rating) %>% 
+  gather(type, value, -game_id, -name) %>% 
+  filter(!is.na(value)) %>% 
+  separate_rows(value, sep = ',') %>% 
+  arrange(game_id)
+
+catcounts = catvars %>% 
+  count(type, value,  sort = T)
+
+catcounts %>% 
+  filter(type == 'category') %>% 
+  mutate(value = fct_reorder(value, n)) %>% 
+  top_n(20, n) %>% 
+  ggplot(aes(value, n)) +
+  geom_col(fill = 'blue') +
+  coord_flip() +
+  ylab("Total") +
+  xlab("Board Game Type") +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+
+```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
+df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
+  filter(decade > 1950) %>% 
+  filter(designer != '(Uncredited)') %>% 
+  group_by(decade) %>% 
+  count(designer, sort = T) %>%  
+  filter(!is.na(designer)) %>% 
+  arrange(desc(n)) %>% 
+  top_n(5, n) %>% 
+  ggplot(aes(x = designer, y = n, fill = as.factor(decade) )) +
+  geom_col() +
+  facet_wrap(~decade) +
+  coord_flip() +
+  labs(fill = "Decade") +
+  xlab("") +
+  ylab("Count")
+
+```
+
+
+```{r}
+mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_id, publisher)
+```
+
+
+
+In addition, we also created several other graphs to get a better feel for the data. Some of the questions we were interested in answering were: 
+
+\begin{enumerate}
+    \item \textit{Were there any popular designers in each decade and did these designers have an effect on the rating?}
+    \item \textit{What were the most popular types of board games and does type effect the rating?}
+\end{enumerate}
+
+TALK ABOUT THE PLOTS HERE.
+
+## Final Predictors
+
+For our final analysis, we utilized 9 final predictors. The predictors are a mix of both categorical and numerical data:
+\begin{enumerate}
+    \item Maximum playtime
+    \item Minimum age
+    \item Minimum players
+    \item Maximum players
+    \item Whether the game was designed by a ``top ten'' designer
+    \item Game mechanics
+    \item Whether the game was an expansion
+    \item Decade the game was published
+    \item Number of users who rated the game
+\end{enumerate}
+We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course.
+
+We created two new variables of the nine that were used as final predictors: a binary variable for whether the game was designed by a top ten designer, and decade the game was published. Originally, the data had information on the designer that created each game. To create the binary variable, we first filtered the data to make sure there were no uncredited games. Next, we counted the top designers and sorted them in descending order. We took the top 10 designers by the number of games they designed--if there was a tie (e.g. the 10th and 11th designer had the same count) we included them both as a top ten designer. For the decade variable, we simply grouped our year data into decades. This was accomplished because we hypothesized that games changed more by decade than by year. 
+
+# Methods
+
+To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores. In addition, we also made a classifier for whether a game had an average user score of 5.7 or below. This number was roughly the 20th percentile of our data. After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follows.
+
+ To ensure replication of results, we set the seed to 4. We split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. 
+ 
+## Logistic Regression
+
+## K-Nearest Neighbor
+
+## Decision Trees
+
+Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree looks like PREDICTION TREE GRAPH. This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of TREE.ERROR.RATE. 
+To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was OPTIMAL.SIZE. Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was PRUNE.ERROR.RATE. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. 
+
+## Random Forest/Bagging
+
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
+
+
+
+
+
 # Logistic Regression
+
+To begin, we run a logistic regression using the variables described above. The training rate versus cutoff is displayed below
+
 ```{r train.logit}
-y.hat<-predict(glm(above7~.,data = train.dat, family = binomial(link="logit")), type="response")
-cutoff<-function(p){
-  return(as.numeric(y.hat>p))
+y.hat <- predict(glm(above7~.,data = train.dat, family = binomial(link = "logit")), type = "response")
+cutoff <- function(p){
+  return(as.numeric(y.hat > p))
 }
-
-mean(cutoff(.5)==train.dat$above7)
 ```
 
-```{r train.cuttoff.graph}
-hold<-tibble("cutoff"=seq(0,1,.01),
-             "% correct"=rep(NA, length(seq(0,1,.01))))
+```{r train.cuttoff.graph, fig.cap="Cutoff vs % Correct: Training", fig.width=6, fig.height=3}
+hold <- tibble("cutoff" = seq(0,1,.01),
+             "% correct" = rep(NA, length(seq(0,1,.01))))
 
-for(i in seq_len(length(seq(0,1,.01)))){
-  hold[i,2]<-mean(cutoff(hold$cutoff[i])==train.dat$above7)
+for (i in seq_len(length(seq(0, 1, .01)))) {
+  hold[i,2] <- mean(cutoff(hold$cutoff[i]) == train.dat$above7)
 }
 
-ggplot(hold, aes(x=cutoff, y=`% correct`))+
-  geom_point()+
-  ggtitle("Cutoff vs % Correct: In sample")
+ggplot(hold, aes(x = cutoff, y = `% correct`)) +
+  geom_line()
 
 ```
 
-Notice this is the in-sample best value. There is probably some overfitting going on. Now I will check with the test set.
+Now I will check with the test set.
 
 
-```{r Logit.ROC.AUC}
-glm.fit<-glm(above7~.,data = train.dat, family = binomial(link="logit"))
-prob.training<-predict(glm.fit, type="response")
+```{r Logit_ROC_AUC, fig.cap="ROC Curve", include=FALSE}
+glm.fit <- glm(above7~.,data = train.dat, family = binomial(link = "logit"))
+prob.training <- predict(glm.fit, type = "response")
 
-prob.test<-round(predict(glm.fit, test.dat, type="response"),digits=5) 
+prob.test <- round(predict(glm.fit, test.dat, type = "response"),digits = 5) 
 
-test.dat %>% 
-  mutate(Prob=prob.test)
 
-pred<-prediction(prob.training, train.dat$above7)
-perf<-performance(pred, measure = "tpr",x.measure = "fpr")
-plot(perf, col=2, lwd=3, main="ROC curve")
+
+pred <- prediction(prob.training, train.dat$above7)
+perf <- performance(pred, measure = "tpr",x.measure = "fpr")
+plot(perf, col = 2, lwd = 3)
 abline(0,1)
+```
 
+A useful way of determining the quality of a fit is the ROC curve. The ROC curve shows the Type 1 and Type II errors of each cutoff for a logistic regression.
+
+
+```{r AUC_val}
 #AUC value
-auc<-performance(pred, "auc")@y.values
-auc
+auc <- performance(pred, "auc")@y.values
+```
 
+The area under the curve is `r round(auc[[1]],3)`.
+
+```{r, fig.cap="Test Error vs Threshold"}
 # Obtaining best cutoff value:
 
 fpr = performance(pred, "fpr")@y.values[[1]] 
 cutoff = performance(pred, "fpr")@x.values[[1]] # FNR 
 fnr = performance(pred,"fnr")@y.values[[1]]
 
-matplot(cutoff, cbind(fpr,fnr), type="l",lwd=2, xlab="Threshold",ylab="Error Rate") # Add legend to the plot 
-legend(0.3, 1, legend=c("False Positive Rate","False Negative Rate"), col=c(1,2), lty=c(1,2))
+matplot(cutoff, cbind(fpr,fnr), type = "l",lwd = 2, xlab = "Threshold",ylab = "Error Rate") # Add legend to the plot 
+legend(0.3, 1, legend = c("False Positive Rate","False Negative Rate"), col = c(1,2), lty = c(1,2))
 
 
-rate = as.data.frame(cbind(Cutoff=cutoff, FPR=fpr, FNR=fnr)) 
-rate$distance = sqrt((rate[,2])^2+(rate[,3])^2)
+rate = as.data.frame(cbind(Cutoff = cutoff, FPR = fpr, FNR = fnr)) 
+rate$distance = sqrt((rate[,2])^2 + (rate[,3])^2)
 
 index = which.min(rate$distance) 
 best = rate$Cutoff[index] 
 best 
 
-best.pred<-mean(as.numeric(prob.test>best)==test.dat$above7)
+best.pred <- mean(as.numeric(prob.test > best) == test.dat$above7)
 ```
 
 The best value to use as a cutoff is `r best` with a  success rate of `r best.pred`. This is the best cutoff value using the test set.
 
 # KNN
 
-```{r KNN.setup}
-Ytrain<-train.dat$above7
-Xtrain<-train.dat %>% select(-above7) %>% 
-  dummy_cols(., remove_selected_columns = TRUE)
-Xtrain<-scale(Xtrain,center=TRUE, scale = TRUE)
 
-Ytest<-test.dat$above7
-Xtest<-test.dat %>% 
+
+```{r KNN.setup}
+Ytrain <- train.dat$above7
+Xtrain <- train.dat %>% select(-above7) %>% 
+  dummy_cols(., remove_selected_columns = TRUE)
+Xtrain <- scale(Xtrain,center=TRUE, scale = TRUE)
+
+Ytest <- test.dat$above7
+Xtest <- test.dat %>% 
   select(-above7) %>% 
   dummy_cols(., remove_selected_columns = TRUE) %>% 
   scale(center=TRUE, scale=TRUE)
 
 ```
 
-Set up training success rate.
 ```{r KNN.train.2}
-pred.ytrain<-knn(train=Xtrain, test=Xtrain, cl=Ytrain, k=2)
+pred.ytrain <- knn(train = Xtrain, test = Xtrain, cl = Ytrain, k=2)
 
-conf.train<-table(predicted=pred.ytrain,observed=Ytrain)
-
-conf.train
-
-#Train accuracy
-sum(diag(conf.train)/sum(conf.train))
+conf.train <- table(predicted=pred.ytrain,observed=Ytrain)
 ```
-
-Now trying with the test set
 
 ```{r KNN.test.2}
 pred.ytest<-knn(train=Xtrain, test=Xtest, cl=Ytrain, k=2)
 
 conf.test<-table(predicted=pred.ytest,observed=Ytest)
-
-conf.test
-
-#Train accuracy
-sum(diag(conf.test)/sum(conf.test))
 ```
 
-With a nearest neighbor of 2, we can get the test success rate up to `r sum(diag(conf.test)/sum(conf.test))`.
+`r kable(conf.test)`
 
-Now, I will do a cross validation to figure out which number of neighbors I should use.  
+The training error with 2 neighbors is `r sum(diag(conf.train)/sum(conf.train))`. The true positive rate is `r round(conf.train[1,1]/sum(conf.train[,1]),3)` and the false positive rate is `r round(conf.train[1,2]/sum(conf.train[1,]),3)`.
+
+The test error with 2 neighbors is `r sum(diag(conf.test)/sum(conf.test))`. The true positive rate is `r round(conf.test[1,1]/sum(conf.test[,1]),3)` and the false positive rate is `r round(conf.test[1,2]/sum(conf.test[1,]),3)`.
+
 ```{r KNN.cv}
-validation.error<-NULL
-allK<-1:1
+validation.error <- NULL
+allK <- 1:1
 set.seed(66)
 
-for (i in allK){ # Loop through different number of neighbors
-  pred.Yval = knn.cv(train=Xtrain, cl=Ytrain, k=i) # Predict on the left-out validation set
-  validation.error =c(validation.error, mean(pred.Yval!=Ytrain)) # Combine all validation errors 
+for (i in allK) { # Loop through different number of neighbors
+  pred.Yval = knn.cv(train = Xtrain, cl = Ytrain, k = i) # Predict on the left-out validation set
+  validation.error = c(validation.error, mean(pred.Yval != Ytrain)) # Combine all validation errors 
   }
 
 numneighbor = max(allK[validation.error == min(validation.error)]) 
 
-numneighbor
 ```
-Using LOOCV, we have determined the optimal number of neighbors is `r numneighbor`. Now, we will rerun the analysis on the test data using `r numneighbor` nearest neighbors.
+
+However, the odds of 2 being the correct number of neighbors is very slim. In order ot determine the correct number of neighbors, L One Out Cross Validation (LOOCV) is employed. The optimal number of neighbors determined using LOOCV is `r numneighbor`.
 
 ```{r KNN.actual}
 set.seed(67)
 
-pred.YTest = knn(train=Xtrain, test=Xtest, cl=Ytrain, k=numneighbor)
+pred.YTest = knn(train = Xtrain, test = Xtest, cl = Ytrain, k = numneighbor)
 
-conf.matrix = table(predicted=pred.YTest, true=Ytest) 
-conf.matrix
-
-sum(diag(conf.matrix)/sum(conf.matrix))
+conf.matrix = table(predicted = pred.YTest, true = Ytest) 
+kable(conf.matrix)
 ```
 
-KNN gives us a slightly higher prediction rate than logistic regression.
-
+KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
 
 # Decision Trees by Mikey Boi
 ```{r}
