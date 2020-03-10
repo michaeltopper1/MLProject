@@ -7,7 +7,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 library(tidyverse)
 library(dplyr)
 library(fastDummies)
@@ -19,7 +19,11 @@ theme_set(theme_bw())
 ```
 
 
-Exploratory Data Analysis
+# Exploratory Data Analysis
+
+
+I have some workds
+
 ```{r}
 df %>% ggplot(aes(average_rating)) +
   geom_histogram(fill = "grey") +
@@ -31,6 +35,8 @@ df %>% ggplot(aes(average_rating)) +
   theme_classic()
 
 ```
+
+I have more words
 
 Now going to make a graph of some possible predictors
 ```{r}
