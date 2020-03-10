@@ -1,5 +1,5 @@
 ---
-title: "Cleaning"
+title: "Final Project"
 author: "Michael Topper and Danny Klinenberg"
 output: 
   pdf_document:
@@ -24,13 +24,13 @@ library(ggpubr)
 library(kableExtra)
 library(memisc)
 df = board_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-03-12/board_games.csv")
-
+select = dplyr::select
 theme_set(theme_bw())
 ```
 
 ```{r data.clean}
 danny.dat <- df %>%
-  separate(.,mechanic, "mechanic1",sep=",",extra="drop") %>% #Just grabbing the first mechanic for our purposes 
+  separate(.,mechanic, "mechanic1",sep=",",extra="drop") %>% 
   mutate(expansion1=ifelse(is.na(expansion),0,str_count(df$expansion,",")))
 
 top.ten.designer = danny.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
@@ -39,12 +39,9 @@ top.ten.names = top.ten.designer$designer
 #added in a top ten variable
 danny.dat = danny.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0)))
 danny.dat.use<-danny.dat %>% 
-  mutate(expansion1=log(expansion1+1),
-         decade = 10 * (year_published %/% 10),
-         above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
+  mutate(expansion1=log(expansion1+1),decade = 10 * (year_published %/% 10), above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
          ) %>% 
-  select(c(above7,max_playtime,min_age,min_players, max_players,top.ten, mechanic1,users_rated,expansion1,decade)) %>% 
-  #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
+  select(c(above7,max_playtime,min_age,min_players,max_players,top.ten,mechanic1,users_rated,expansion1,decade)) %>% 
   mutate(above7=as.factor(above7)) %>% 
   drop_na()
 
@@ -105,7 +102,7 @@ df %>% ggplot(aes(average_rating)) +
   theme_classic()
 ```
 
-Before building our machine learning models, we first performed exploratory analysis. To begin, We started plotting several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
+Before building our machine learning models, we first performed exploratory analysis. To begin, we plotted several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
 
 We first will highlight four main features: *Maximum Playtime (minutes)*, *Users Rated*, *Decade*, and *Number of Expansions*. We chose to use maximum playtime over minimum or average because we thought it was the most representative of the game playing experience. In addition, minimum and average are expected to be highly correlated with maximum so including one would suffice for predictive power. *User Rated* refers to the number of individuals that rated the game. This serves as a proxy for popularity of the game. *Decade* was a transformed variable from *date released*. We assumed there were some sort of generational fixed effects involved in the evolution of board games hopefully captured by *Decade*. Finally, we transformed *Expansions* to *Number of Expansions*. Good games tend to have more expansions than bad games so the magnituded was an appealing feature. The relationship was initially exponential; a few games had lots of expansions and were rated very high. To account for this, the number of expansions was logged. This created a linear relationship for analysis.
 ```{r features_graphs_maker}
@@ -396,96 +393,38 @@ kable(conf.matrix)
 KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
 
 ## Decision Trees
-
-Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree looks like PREDICTION TREE GRAPH. This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of TREE.ERROR.RATE. 
-To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was OPTIMAL.SIZE. Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was PRUNE.ERROR.RATE. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. 
-
-## Random Forest/Bagging
-
-Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
+ecision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
 
 
-
-
-
-
-# Decision Trees by Mikey Boi
-```{r}
-michael.dat = danny.dat %>% 
-  mutate(expansion1=log(expansion1+1),
-         decade = 10 * (year_published %/% 10),
-         above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
-         ) %>% 
-  dplyr::select(c(above7,max_playtime,min_age,min_players, max_players, designer, mechanic1,users_rated,expansion1,decade)) %>% 
-  #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
-  mutate(above7=as.factor(above7)) %>% 
-  drop_na()
-```
-I am going to add in a binary variable equal to one if the game was designed by a Top 10 designer. 
-
-```{r}
-
-top.ten.designer = michael.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
-top.ten.names = top.ten.designer$designer
-
-#added in a top ten variable
-michael.dat = michael.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
-michael.dat = michael.dat %>% mutate_if(is.character, as.factor)
-
-```
-Testing and training data for myself.
-```{r}
-set.seed(4)
-
-if (length(michael.dat$above7 %% 2 !=0)) {
-  michael.dat = michael.dat[-c(round(runif(1, 1, length(michael.dat$above7)),0)),]
-}
-train.m = sample(1:nrow(michael.dat), 0.5*nrow(michael.dat))
-
-train.dat.m<-michael.dat[train.m,]
-test.dat.m<-michael.dat[-train.m,]
-```
-
-Now I am going to make the tree.
-```{r}
+```{r treegraph, fig.cap="\\label{DecisionTree}Decision Tree on Training Set", fig.width=6, fig.height=4}
 library(tree)
 tree.fit = tree(above7 ~., data = train.dat)
-summary(tree.fit)
 plot(tree.fit)
 text(tree.fit, pretty = 0, cex = 0.7)
-title("Classification Tree Built on Training Set")
+title(" ")
 ```
 
-Now to fit this to the testing data
 ```{r}
 yhat.testset = predict(tree.fit, newdata = test.dat, type = 'class')
-
 #Obtaining a confusion matrix
 error.tree = table(yhat.testset, test.dat$above7)
 tree.accuracy = sum(diag(error.tree)/sum(error.tree))
 tree.error.rate = 1 - tree.accuracy
 ```
+This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of `r round(tree.error.rate,3)`. 
 
-Hence, the tree had a misclassification rate of `r tree.error.rate`.
-
-Now I will use cross validation to find the optimal tree size. 
 
 ```{r}
 cv.for.tree = cv.tree(tree.fit, FUN=prune.misclass, K=10)
 optimal.size = cv.for.tree$size[which.min(cv.for.tree$dev)]
 ```
 
-THe optimal size for the tree is `r optimal.size`. 
-
-Now to prune
-```{r}
+```{r prunetree, fig.cap="\\label{Prunetree}Pruned Decision Tree Using Cross Validation for Optimal Size", fig.width=6, fig.height=4}
 tree.prune = prune.misclass(tree.fit, best = optimal.size)
 plot(tree.prune)
 text(tree.prune, pretty = 0, cex = 0.8)
-title("Pruned Tree Using CV for Optimal Size")
+title(" ")
 ```
-
-Predicting on the pruned tree:
 ```{r}
 pred.prune = predict(tree.prune, newdata = test.dat, type = 'class')
 error.prune = table(pred.prune, test.dat$above7)
@@ -493,54 +432,80 @@ prune.accuracy = sum(diag(error.prune))/sum(error.prune)
 prune.error.rate = 1 - prune.accuracy
 ```
 
-Therefore, the prune test error is `r prune.error.rate`. This looks to be very slightly better off than the non-pruned tree.
 
-# Random Forests
 
-Now to try random forests.
-```{r}
+
+
+To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was `r optimal.size`.  Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was `r round(prune.error.rate, 3)`. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. Our pruned decision tree is shown in Figure \ref{Prunetree}.
+
+## Random Forest/Bagging
+
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
+
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. 
+```{r rf, fig.cap="\\label{rf} Random Forest", fig.width=6, fig.height=3}
 library(randomForest)
 train.dat = train.dat %>% mutate_if(is.character, as.factor)
 test.dat = test.dat %>% mutate_if(is.character, as.factor)
 rf.tree = randomForest(above7 ~., data = train.dat, mtry = 3, ntree = 500, importance = T)
-
-plot(rf.tree)
+plot(rf.tree, main = "")
 ```
 
-
-Now going to get the test error rate for the random forest.
 ```{r}
 yhat.rf = predict(rf.tree, newdata = test.dat)
 rf.err = table(pred = yhat.rf, truth = test.dat$above7)
-rf.err
 rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
 ```
 
-Hence, the random forest got a test error rate of `r rf.test.error`. This is substantially better than anything we have tried before.
 
-```{r}
-importanceplot = varImpPlot(rf.tree)
-importanceplot = as.data.frame(importanceplot)
+```{r, include = FALSE}
+## I don't want this to show up!
+imp = varImpPlot(rf.tree)
+imp = as.data.frame(imp)
+imp$varnames = rownames(imp)
+rownames(imp) = NULL
 ```
 
-Now running a loop to find the best $m$.
+```{r importanceplot, fig.cap="\\label{importanceplot}Importance Plot", fig.width=6, fig.height=3}
+
+## I want to put these side by side
+mean.accuracy = imp %>% 
+  ggplot(aes(x = reorder(varnames, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+  geom_point() +
+  geom_segment(aes(x = varnames, xend=varnames, y = 0, yend = MeanDecreaseAccuracy)) +
+  xlab("Variable") +
+  ylab("Mean Decrease Accuracy") +
+  coord_flip()
+
+mean.gini = imp %>% 
+  ggplot(aes(x = reorder(varnames, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point() +
+  geom_segment(aes(x = varnames, xend=varnames, y = 0, yend = MeanDecreaseGini)) +
+  xlab("Variable") +
+  ylab("Mean Decrease Gini") +
+  coord_flip()
+
+ggarrange(mean.gini, mean.accuracy)
+```
+
+
 ```{r}
 # rf.error.loop = rep(0, 8)
 # for (i in 2:9) {
-#   rf.tree.loop = randomForest(above7 ~. -designer, data = train.dat.m, mtry = i, ntree = 500, importance = T)
-#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat.m)
-#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat.m$above7)
+#   rf.tree.loop = randomForest(above7 ~., data = train.dat, mtry = i, ntree = 500, importance = T)
+#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat)
+#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat$above7)
 #   rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
 #   rf.error.loop[i-1] = rf.test.error.loop
 # }
 ```
 
-From this the best m looks to be $m=2$ or $m=3$. In addition, the bagging test error rate (i.e. when $m=\rho$) does worse.
 
 
+When $mtry = 3$ we found that our misclassification rate was `r round(rf.test.error, 3)`. This was a significant upgrade from our previous decision tree method. To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. 
+## Random Forest/Bagging
 
-
-
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
 
 
 
