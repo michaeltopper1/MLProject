@@ -16,7 +16,6 @@ header_includes:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,  message = FALSE, cache = TRUE, warning = FALSE, fig.pos = "H")
 library(tidyverse)
-library(dplyr)
 library(fastDummies)
 library(ROCR)
 library(class)
