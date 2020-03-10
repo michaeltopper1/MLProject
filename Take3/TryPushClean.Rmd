@@ -1,5 +1,5 @@
 ---
-title: "Cleaning"
+title: "Final Project"
 author: "Michael Topper and Danny Klinenberg"
 output: 
   pdf_document:
@@ -83,18 +83,17 @@ Our data set on board games comes from the Board Game Geek database. This data s
 
 ## Exploratory Analysis
 
-```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
-df %>% ggplot(aes(average_rating)) +
-  geom_histogram(fill = "grey") +
-  geom_vline(aes(xintercept = 7), color = 'red') +
-  labs(xintercept = "Classification Cutoff") +
-  theme(plot.title = element_text(hjust = 0.5))  +
-  ylab("Count") +
-  xlab("Average Rating") +
-  theme_classic()
-```
 
 Before building our machine learning models, we first performed exploratory analysis. To begin, We started plotting several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
+
+In addition, we also created several other graphs to get a better feel for the data. Some of the questions we were interested in answering were: 
+
+\begin{enumerate}
+    \item \textit{Were there any popular designers in each decade and did these designers have an effect on the rating?}
+    \item \textit{What were the most popular types of board games and does type effect the rating?}
+\end{enumerate}
+
+We can see from Figure \ref{relationship} that the predictors maximum playtime, users rated, decade published, and number of expansions all have a positive correlation with average ratings. Due to this relationship, we expected these to be major predictors in our model. In addition, Figure \ref{popular} shows the distribution of board game types. From this, we hypothesized that board game type plays a role in score of a game. For instance, card games may score systematically higher than adventure games. Furthermore, we can see from Figure \ref{designer} that in the 1990s-2010s, a few designers were extremely prominent in the game designing business. Because of this, we suspected that a top designer has a role in the prediction of whether a game received a high average score. 
 
 
 ```{r features_graphs}
@@ -133,11 +132,14 @@ expansion <- danny.dat %>%
 
 ```
 
-```{r, fig.cap = "Relationship of Features", fig.width=6, fig.height=3}
+
+
+```{r, fig.cap = "\\label{relationship}Relationship of Features", fig.width=6, fig.height=3}
 annotate_figure(ggarrange(playtime,user_rate,year, expansion),
   left = text_grob("Average Ratings", rot = 90)
 )
 ```
+
 
 
 ```{r decade_graph, fig.width=6, fig.height=3, include=FALSE}
@@ -151,7 +153,7 @@ df %>% mutate(goodrating = as.factor(ifelse(average_rating >= 7, 1, 0))) %>%
 ```
 
 
-```{r pop_type, fig.cap="Most Popular Types of Board Games", fig.width=6, fig.height=3}
+```{r pop_type, fig.cap="\\label{popular}Most Popular Types of Board Games", fig.width=6, fig.height=3}
 catvars = df %>% 
   select(game_id, name, family, expansion, category, artist, designer, average_rating) %>% 
   gather(type, value, -game_id, -name) %>% 
@@ -175,7 +177,7 @@ catcounts %>%
 ```
 
 
-```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
+```{r designers, fig.cap="\\label{designer}Top 5 Designers by Decade", fig.width=6, fig.height=7}
 df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
   filter(decade > 1950) %>% 
   filter(designer != '(Uncredited)') %>% 
@@ -201,14 +203,7 @@ mechanics = df %>% separate_rows(mechanic, sep = ",") %>% select(mechanic, game_
 
 
 
-In addition, we also created several other graphs to get a better feel for the data. Some of the questions we were interested in answering were: 
 
-\begin{enumerate}
-    \item \textit{Were there any popular designers in each decade and did these designers have an effect on the rating?}
-    \item \textit{What were the most popular types of board games and does type effect the rating?}
-\end{enumerate}
-
-TALK ABOUT THE PLOTS HERE.
 
 ## Final Predictors
 
@@ -229,8 +224,18 @@ We decided on these predictors due to the relationships we saw in our explorator
 We created two new variables of the nine that were used as final predictors: a binary variable for whether the game was designed by a top ten designer, and decade the game was published. Originally, the data had information on the designer that created each game. To create the binary variable, we first filtered the data to make sure there were no uncredited games. Next, we counted the top designers and sorted them in descending order. We took the top 10 designers by the number of games they designed--if there was a tie (e.g. the 10th and 11th designer had the same count) we included them both as a top ten designer. For the decade variable, we simply grouped our year data into decades. This was accomplished because we hypothesized that games changed more by decade than by year. 
 
 # Methods
-
 To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores. In addition, we also made a classifier for whether a game had an average user score of 5.7 or below. This number was roughly the 20th percentile of our data. After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follows.
+
+```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
+df %>% ggplot(aes(average_rating)) +
+  geom_histogram(fill = "grey") +
+  geom_vline(aes(xintercept = 7), color = 'red') +
+  labs(xintercept = "Classification Cutoff") +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  ylab("Count") +
+  xlab("Average Rating") +
+  theme_classic()
+```
 
  To ensure replication of results, we set the seed to 4. We split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. 
  
@@ -240,13 +245,98 @@ To begin, we first made a classifier for whether a game had an average user scor
 
 ## Decision Trees
 
-Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree looks like PREDICTION TREE GRAPH. This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of TREE.ERROR.RATE. 
-To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was OPTIMAL.SIZE. Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was PRUNE.ERROR.RATE. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. 
+
+
+
+
+Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
+
+
+```{r treegraph, fig.cap="\\label{DecisionTree}Decision Tree", fig.width=6, fig.height=4}
+library(tree)
+tree.fit = tree(above7 ~., data = train.dat)
+plot(tree.fit)
+text(tree.fit, pretty = 0, cex = 0.7)
+title("Classification Tree Built on Training Set")
+```
+
+```{r}
+yhat.testset = predict(tree.fit, newdata = test.dat, type = 'class')
+
+#Obtaining a confusion matrix
+error.tree = table(yhat.testset, test.dat$above7)
+tree.accuracy = sum(diag(error.tree)/sum(error.tree))
+tree.error.rate = 1 - tree.accuracy
+```
+This particular tree did a decent job predicting whether a game was rated highly-- it received a misclassification rate of `r round(tree.error.rate,3)`. 
+
+
+```{r}
+cv.for.tree = cv.tree(tree.fit, FUN=prune.misclass, K=10)
+optimal.size = cv.for.tree$size[which.min(cv.for.tree$dev)]
+```
+
+```{r prunetree, fig.cap="\\label{Prunetree}Pruned Decision Tree", fig.width=6, fig.height=4}
+tree.prune = prune.misclass(tree.fit, best = optimal.size)
+plot(tree.prune)
+text(tree.prune, pretty = 0, cex = 0.8)
+title("Pruned Tree Using Cross Validation for Optimal Size")
+```
+```{r}
+pred.prune = predict(tree.prune, newdata = test.dat, type = 'class')
+error.prune = table(pred.prune, test.dat$above7)
+prune.accuracy = sum(diag(error.prune))/sum(error.prune)
+prune.error.rate = 1 - prune.accuracy
+```
+
+
+
+
+
+To enhance this tree, we next used cross validation to find the optimal tree size. After performing cross validation, we found that the optimal tree size was `r optimal.size`.  Using this optimal size, we then pruned the tree and once again performed our tree prediction algorithm. When pruning and optimal tree size were included, the test misclassication rate was `r round(prune.error.rate, 3)`. This was extremely similar to our original tree and therefore we can conclude that pruning/cross validation did not lead to a significant increase in performance. Our pruned decision tree is shown in Figure \ref{Prunetree}.
 
 ## Random Forest/Bagging
 
-Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
 
+Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. 
+
+```{r rf, fig.cap="\\label{rf} Random Forest", fig.width=6, fig.height=3}
+library(randomForest)
+train.dat = train.dat %>% mutate_if(is.character, as.factor)
+test.dat = test.dat %>% mutate_if(is.character, as.factor)
+rf.tree = randomForest(above7 ~., data = train.dat, mtry = 3, ntree = 500, importance = T)
+
+plot(rf.tree)
+title(main = "Error Rate for the Random Forest", xlab = "Number of Trees", ylab = "Error")
+
+```
+
+```{r}
+yhat.rf = predict(rf.tree, newdata = test.dat)
+rf.err = table(pred = yhat.rf, truth = test.dat$above7)
+rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
+```
+
+
+```{r importanceplot, fig.cap="\\label{importanceplot}Importance Plot", fig.width=5, fig.height=5}
+varImpPlot(rf.tree)
+```
+
+
+```{r}
+# rf.error.loop = rep(0, 8)
+# for (i in 2:9) {
+#   rf.tree.loop = randomForest(above7 ~. -designer, data = train.dat, mtry = i, ntree = 500, importance = T)
+#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat)
+#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat$above7)
+#   rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
+#   rf.error.loop[i-1] = rf.test.error.loop
+# }
+```
+
+
+
+When $mtry = 3$ we found that our misclassification rate was `r round(rf.test.error, 3)`. This was a significant upgrade from our previous decision tree method. To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. 
 
 
 
@@ -387,134 +477,6 @@ kable(conf.matrix)
 ```
 
 KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
-
-# Decision Trees by Mikey Boi
-```{r}
-michael.dat = danny.dat %>% 
-  mutate(expansion1=log(expansion1+1),
-         decade = 10 * (year_published %/% 10),
-         above7 = as.numeric(ifelse(average_rating >= 7, 1 , 0))
-         ) %>% 
-  select(c(above7,max_playtime,min_age,min_players, max_players, designer, mechanic1,users_rated,expansion1,decade)) %>% 
-  #dummy_cols(., remove_selected_columns = TRUE) %>%  #Couldn't get mechanic1 to register so have to do a trick
-  mutate(above7=as.factor(above7)) %>% 
-  drop_na()
-```
-I am going to add in a binary variable equal to one if the game was designed by a Top 10 designer. 
-
-```{r}
-
-top.ten.designer = michael.dat %>% filter(designer != "(Uncredited)") %>% count(designer, sort = T) %>% top_n(10, n)
-top.ten.names = top.ten.designer$designer
-
-#added in a top ten variable
-michael.dat = michael.dat %>% mutate(top.ten = as.factor(ifelse(designer %in% top.ten.names, 1, 0))) %>% drop_na()
-michael.dat = michael.dat %>% mutate_if(is.character, as.factor)
-
-```
-Testing and training data for myself.
-```{r}
-set.seed(4)
-
-if (length(michael.dat$above7 %% 2 !=0)) {
-  michael.dat = michael.dat[-c(round(runif(1, 1, length(michael.dat$above7)),0)),]
-}
-train.m = sample(1:nrow(michael.dat), 0.5*nrow(michael.dat))
-
-train.dat.m<-michael.dat[train.m,]
-test.dat.m<-michael.dat[-train.m,]
-```
-
-Now I am going to make the tree.
-```{r}
-library(tree)
-tree.fit = tree(above7 ~., data = train.dat)
-summary(tree.fit)
-plot(tree.fit)
-text(tree.fit, pretty = 0, cex = 0.7)
-title("Classification Tree Built on Training Set")
-```
-
-Now to fit this to the testing data
-```{r}
-yhat.testset = predict(tree.fit, newdata = test.dat, type = 'class')
-
-#Obtaining a confusion matrix
-error.tree = table(yhat.testset, test.dat$above7)
-tree.accuracy = sum(diag(error.tree)/sum(error.tree))
-tree.error.rate = 1 - tree.accuracy
-```
-
-Hence, the tree had a misclassification rate of `r tree.error.rate`.
-
-Now I will use cross validation to find the optimal tree size. 
-
-```{r}
-cv.for.tree = cv.tree(tree.fit, FUN=prune.misclass, K=10)
-optimal.size = cv.for.tree$size[which.min(cv.for.tree$dev)]
-```
-
-THe optimal size for the tree is `r optimal.size`. 
-
-Now to prune
-```{r}
-tree.prune = prune.misclass(tree.fit, best = optimal.size)
-plot(tree.prune)
-text(tree.prune, pretty = 0, cex = 0.8)
-title("Pruned Tree Using CV for Optimal Size")
-```
-
-Predicting on the pruned tree:
-```{r}
-pred.prune = predict(tree.prune, newdata = test.dat, type = 'class')
-error.prune = table(pred.prune, test.dat$above7)
-prune.accuracy = sum(diag(error.prune))/sum(error.prune)
-prune.error.rate = 1 - prune.accuracy
-```
-
-Therefore, the prune test error is `r prune.error.rate`. This looks to be very slightly better off than the non-pruned tree.
-
-# Random Forests
-
-Now to try random forests.
-```{r}
-library(randomForest)
-train.dat = train.dat %>% mutate_if(is.character, as.factor)
-test.dat = test.dat %>% mutate_if(is.character, as.factor)
-rf.tree = randomForest(above7 ~., data = train.dat, mtry = 3, ntree = 500, importance = T)
-
-plot(rf.tree)
-```
-
-
-Now going to get the test error rate for the random forest.
-```{r}
-yhat.rf = predict(rf.tree, newdata = test.dat)
-rf.err = table(pred = yhat.rf, truth = test.dat$above7)
-rf.err
-rf.test.error = 1 - sum(diag(rf.err))/sum(rf.err)
-```
-
-Hence, the random forest got a test error rate of `r rf.test.error`. This is substantially better than anything we have tried before.
-
-```{r}
-importanceplot = varImpPlot(rf.tree)
-importanceplot = as.data.frame(importanceplot)
-```
-
-Now running a loop to find the best $m$.
-```{r}
-# rf.error.loop = rep(0, 8)
-# for (i in 2:9) {
-#   rf.tree.loop = randomForest(above7 ~. -designer, data = train.dat.m, mtry = i, ntree = 500, importance = T)
-#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat.m)
-#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat.m$above7)
-#   rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
-#   rf.error.loop[i-1] = rf.test.error.loop
-# }
-```
-
-From this the best m looks to be $m=2$ or $m=3$. In addition, the bagging test error rate (i.e. when $m=\rho$) does worse.
 
 
 
