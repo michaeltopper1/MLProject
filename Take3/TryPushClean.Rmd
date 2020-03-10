@@ -175,7 +175,7 @@ catcounts %>%
 ```
 
 
-```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=}
+```{r designers, fig.cap="Top 5 Designers by Decade", fig.width=6, fig.height=3}
 df %>% mutate(decade = 10 * (year_published %/% 10)) %>% 
   filter(decade > 1950) %>% 
   filter(designer != '(Uncredited)') %>% 
