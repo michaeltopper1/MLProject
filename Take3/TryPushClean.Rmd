@@ -336,14 +336,17 @@ The best value to use as a cutoff is `r round(best,3)` with a  success rate of `
 
 ```{r KNN.setup}
 Ytrain <- train.dat$above7
-Xtrain <- train.dat %>% select(-above7) %>% 
-  dummy_cols(.,  remove_selected_columns = TRUE)
+Xtrain <- train.dat %>% 
+  select(-above7) %>% 
+  mutate(top.ten = as.numeric(top.ten)) %>% 
+  dummy_cols(., select_columns = "mechanic1",  remove_selected_columns = TRUE)
 Xtrain <- scale(Xtrain,center = TRUE, scale = TRUE)
 
 Ytest <- test.dat$above7
 Xtest <- test.dat %>% 
   select(-above7) %>% 
-  dummy_cols(., remove_selected_columns = TRUE) %>% 
+  mutate(top.ten = as.numeric(top.ten)) %>% 
+  dummy_cols(., select_columns = "mechanic1", remove_selected_columns = TRUE) %>% 
   scale(center = TRUE, scale = TRUE)
 
 ```
@@ -550,7 +553,8 @@ logit_error <- mean((validation.dat$above7 != logit.pred))
 Yvalid <- validation.dat$above7
 Xvalid <- validation.dat %>% 
   select(-above7) %>% 
-  dummy_cols(., remove_selected_columns = TRUE) %>% 
+  mutate(top.ten = as.numeric(top.ten)) %>% 
+  dummy_cols(., select_columns = "mechanic1", remove_selected_columns = TRUE) %>% 
   scale(center = TRUE, scale = TRUE)
 
 pred.ytest.val <- knn(train = Xtrain, test = Xvalid, cl = Ytrain, k = numneighbor)
