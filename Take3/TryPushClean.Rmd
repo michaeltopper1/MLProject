@@ -82,7 +82,7 @@ validation.dat  = validation.dat %>%
 
 # Introduction
 
-Social interaction is on the decline. According to recent a recent study using a nationally representative sample of U.S. adolescents and college students, researchers found that adolescences in the 2010s spent significantly less time socializing with their peers than their previous generation counterparts [@twenge2019less]. Specifically, college-bound high school seniors spent less than an hour a day engaging in in-person social interaction. This decline can largely be attributed to the rise of technology. 
+Social interaction is on the decline. According to recent a recent study using a nationally representative sample of U.S. adolescents and college students, researchers found that adolescents in the 2010s spent significantly less time socializing with their peers than their previous generation counterparts [@twenge2019less]. Specifically, college-bound high school seniors spent less than an hour a day engaging in in-person social interaction. This decline can largely be attributed to the rise of technology. 
 
 
 The ubiquity of technology has been linked to hindering the collaborative benefits that social interaction contributes. For instance, one study found that non-digital playtime in children lead to increases in creative thinking [@hitron2018digital]. Therefore, with the technology giants constantly battling each other for every second of our attention, it is imperative that human-on-human interaction still plays a major role in everyday life. One of the classic ways to achieve this important interaction is with board games.
@@ -91,13 +91,13 @@ Board games suffered a significant reduction in sales upon the spread of the sma
 
 # Data
 
-Our data set on board games comes from the Board Game Geek database. This data set was published on the R for Datascience Github page for their Tidy Tuesday-a weekly event in which a new public data set is posted for any user to perform analysis on. In particular, this data set features games with at least 50 ratings for games published between the years 1950 and 2016. Surprisingly, this results in 10,532 games. The data features information on the following important variables: a description of the game, maximum number of plays, maximum playtime, minimum age, minimum playtime, year published, artist used for the game art, category of the game, family of the game, average rating, number of users rated, and publisher. Overall, the raw data possesses 22 variables, although we only performed machine learning techniques using 9 covariates. Many of the variables were duplicated into "new" variable names, creating the illusion of more information than was truly available. For instance, there were two variables that included identical information but were labeled differently as "max playtime" and "playing time".  We excluded the duplicates from the analysis. 
+Our data set on board games comes from the Board Game Geek database. This data set was published on the R for Datascience Github page for their Tidy Tuesday--a weekly event in which a new public data set is posted for any user to perform analysis on. In particular, this data set features games with at least 50 ratings for games published between the years 1950 and 2016. Surprisingly, this results in 10,532 games. The data features information on the following important variables: a description of the game, maximum number of plays, maximum playtime, minimum age, minimum playtime, year published, artist used for the game art, category of the game, family of the game, average rating, number of users rated, and publisher. Overall, the raw data possesses 22 variables, although we only performed machine learning techniques using 9 covariates. Many of the variables in the raw were duplicated into "new" variable names, creating the illusion of more information than was truly available. For instance, there were two variables that included identical information but were labeled differently as "max playtime" and "playing time".  We excluded the duplicates from the analysis. 
 
 ## Exploratory Analysis
 
 Before building our machine learning models, we first performed exploratory analysis. To begin, we plotted several scatter and box-and-whisker plots to visualize the relationship between our covariates and whether the game received a high average score. 
 
-We first will highlight four main features: *Maximum Playtime (minutes)*, *Users Rated*, *Decade*, and *Number of Expansions*. We chose to use maximum playtime over minimum or average because we thought it was the most representative of the game playing experience. In addition, minimum and average are expected to be highly correlated with maximum, so including one would suffice for predictive power. *User Rated* refers to the number of individuals that rated the game. This serves as a proxy for popularity of the game. *Decade* was a transformed variable from *date released*. We assumed there were some sort of generational fixed effects involved in the evolution of board games hopefully captured by *Decade*. Finally, we transformed *Expansions* to *Number of Expansions*. Good games tend to have more expansions than bad games so the magnitude was an appealing feature. The relationship was initially exponential; a few games had lots of expansions and were rated very high. To account for this, the number of expansions was logged. This created a linear relationship for analysis.
+We first will highlight four main features: *Maximum Playtime (minutes)*, *Users Rated*, *Decade*, and *Number of Expansions*. We chose to use maximum playtime over minimum or average because we thought it was the most representative of the game playing experience. In addition, minimum and average are expected to be highly correlated with maximum, so including one would suffice for predictive power. *User Rated* refers to the number of individuals that rated the game. This serves as a proxy for popularity of the game. *Decade* was a transformed variable from *date released*. We assumed there were some sort of generational fixed effects involved in the evolution of board games hopefully captured by *Decade*. Finally, we transformed *Expansions* to *Number of Expansions*. Good games tend to have more expansions than bad games so the magnitude was an appealing feature. The relationship was initially exponential; a few games had many types of expansions and were rated very high. To account for this, the number of expansions was log-transformed. This created a linear relationship for analysis.
 
 ```{r features_graphs_maker}
 playtime<-df %>% filter(max_playtime < 10000) %>% 
@@ -183,7 +183,7 @@ df %>% mutate(decade = 10 * (year_published %/% 10)) %>%
 
 ```
 
-Figure \ref{popular} shows the distribution of board game types. From this, we hypothesized that board game type plays a role in score of a game. For instance, card games may score systematically higher than adventure games However, an initial concern was that there were many games that had very specific types. For example, *Connection Games* had 19 observations. This would lead to issues in cross validation. Because of this, we grouped all categories under a threshold as *Other*. Furthermore, we can see from Figure \ref{designer} that in the 1990s-2010s, a few designers were extremely prominent in the game designing business. Because of this, we suspected that a top designer has a role in the prediction of whether a game received a high average score. 
+Figure \ref{popular} shows the distribution of board game types. From this, we hypothesized that board game type plays a role in score of a game. For instance, card games may score systematically higher than adventure games. However, an initial concern was that there were many games that had very specific types. For example, *Connection Games* had 19 observations. This would lead to issues in cross validation. Because of this, we grouped all categories under a threshold as *Other*. Furthermore, we can see from Figure \ref{designer} that in the 1990s-2010s, a few designers were extremely prominent in the game designing business. Because of this, we suspected that a top designer has a role in the prediction of whether a game received a high average score. Hence, we created a binary variable equal to 1 if the designer was a top ten designer (by number of games designed) and 0 otherwise. More detailed explanation on this is provided in the next section. 
 
 ```{r pop_type, fig.cap="\\label{popular}Most Popular Types of Board Games", fig.width=6, fig.height=3}
 catvars = df %>% 
@@ -223,15 +223,15 @@ For our final analysis, we utilized 9 final predictors. The predictors are a mix
     \item Decade the game was published (decade)
     \item Number of users who rated the game (users\_rated)
 \end{enumerate}
-We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course. However, we will note that each of these variables (if cleaned properly) could easily increase our prediction rate since advertising has a large effect on consumer behavior \cite{ackerberg2001empirically}. 
+We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course. However, we will note that each of these variables (if cleaned properly) could easily increase our prediction rate since advertising has a large effect on consumer behavior [@ackerberg2001empirically]. 
 
 We created two new variables of the nine that were used as final predictors: a binary variable for whether the game was designed by a top ten designer, and decade the game was published. Originally, the data had information on the designer that created each game. To create the binary variable, we first filtered the data to make sure there were no uncredited games. Next, we counted the top designers and sorted them in descending order. We took the top 10 designers by the number of games they designed--if there was a tie (e.g. the 10th and 11th designer had the same count) we included them both as a top ten designer. For the decade variable, we simply grouped our year data into decades. This was accomplished because we hypothesized that games changed more by decade than by year. 
 
 # Methods
 
-To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores (see Figure \ref{dist}).  After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follow.
+To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores (see Figure \ref{dist}).  After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follow. Each of these techniques were pre-determined in our research proposals, thus excluding the possibility of us exhausting all methods to find the best choice by random chance.
 
-To ensure replication of results, we set the seed to 4. We split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. 
+To ensure replication of results, we set the seed to 4. We randomly split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. The random splits were crucial as it allowed us to omit any sort of bias in non-random splits. Hence, we can expect that there are no systematic differences between our three sets. 
 
 ```{r, outcum_hist, fig.cap="\\label{dist}Distribution of Average Ratings Across Games"}
 df %>% ggplot(aes(average_rating)) +
@@ -269,9 +269,9 @@ cutoff <- function(p){
 }
 ```
 
-The predicted values of a logistic regression are probabilities. This means that a cutoff has be chosen for *above7*. An immediate thought may be 50%. That way half the values are below or above. However, the cutoff should be chosen to minize the error rate. Below is a visual representation of accuracy versus cutoff values for the training set.
+The predicted values of a logistic regression are probabilities. This means that a cutoff has be chosen for *above7*. An immediate thought may be 50%. That way half the values are below or above. However, the cutoff should be chosen to minize the error rate. Figure \ref{cutoff} is a visual representation of accuracy versus cutoff values for the training set.
 
-```{r train.cuttoff.graph, fig.cap="Cutoff vs % Correct: Training", fig.width=6, fig.height=3}
+```{r train.cuttoff.graph, fig.cap="\\label{cutoff}Cutoff vs % Correct: Training", fig.width=6, fig.height=3}
 hold <- tibble("cutoff" = seq(0,1,.01),
              "% correct" = rep(NA, length(seq(0,1,.01))))
 
@@ -280,13 +280,15 @@ for (i in seq_len(length(seq(0, 1, .01)))) {
 }
 
 ggplot(hold, aes(x = cutoff, y = `% correct`)) +
-  geom_line()
+  geom_line() +
+  xlab("Cutoff") +
+  ylab("% Correct")
 
 ```
 
 Notice that the accuracy rate peaks between 25% and 50%. This means that we expect the cutoff rate for the test set to be near the same.
 
-Now, we will check the optimal cutoff for the test set using the model created by the training model.
+Next, we checked the optimal cutoff for the test set using the model created by the training model.
 
 
 ```{r Logit_ROC_AUC, fig.cap="ROC Curve", include=FALSE}
@@ -313,14 +315,15 @@ auc <- performance(pred, "auc")@y.values
 
 The area under the curve is `r round(auc[[1]],3)`. The perfect fit would have an area under the curve of 1. This would mean the model perfectly predicts. Anything above .9 is considered great and anything above .75 is considered good. This is used to tell us if our model does well in general. With this knowledge, we proceeded to pick the optimal cutoff.
 
-Optimal cutoff was chosen by minimizing the type I and type II error. A useful graph is provided below:
+Optimal cutoff was chosen by minimizing the type I and type II error. Figure \ref{roc} shows this relationship:
 
-```{r, fig.cap="Test Error vs Threshold"}
+```{r, fig.cap="\\label{roc}Test Error vs Threshold"}
 # Obtaining best cutoff value:
 
 fpr = performance(pred, "fpr")@y.values[[1]] 
 cutoff = performance(pred, "fpr")@x.values[[1]] # FNR 
 fnr = performance(pred,"fnr")@y.values[[1]]
+
 
 matplot(cutoff, cbind(fpr,fnr), type = "l",lwd = 2, xlab = "Threshold",ylab = "Error Rate") # Add legend to the plot 
 #legend("topright",legend = c("False Positive Rate","False Negative Rate"), col = c(1,2), lty = c(1,2))
@@ -337,11 +340,11 @@ best.pred <- mean(as.numeric(prob.test > best) == test.dat$above7)
 
 The red dotted line is the *false negative* rate while the black solid line is the *false positive* rate. The optimal threshold is chosen by minizing the Euclidean distance of the two curves from 0.
 
-The best value to use as a cutoff is `r round(best,3)` with a  success rate of `r round(best.pred,3)`. This is the best cutoff value using the test set.
+The best value to use as a cutoff was `r round(best,3)` with a  success rate of `r round(best.pred,3)`. This was the best cutoff value using the test set.
 
 ## KNN
 
-*K Nearest Neighbors (KNN)* predicts by matching known observations with an observation we want to predict. KNN works very intuitively: if asked what one observation will act live, use those most similar to it. The difficulty of KNN is choosing the optimal number of neighbors. The key here is to minimize the MSE by choosing the optimal number of k. We start by looking just at k=2.
+*K Nearest Neighbors (KNN)* predicts by matching known observations with an observation we want to predict. KNN works very intuitively: it classifies data points by using classified data points that are "closest" to it. For example, if an unclassified data point is closest to three data points, two of which are classified as 1 and one of which is classified as 0, then the unclassified point would be classified as a 1 (majority rules). The difficulty of KNN is choosing the optimal number of neighbors, as the number of neighbors used to classify can drastically change the classification. The key is to minimize the MSE by choosing the optimal number of k. To begin, we ran the algorithm using k=2.
 
 ```{r KNN.setup}
 Ytrain <- train.dat$above7
@@ -372,9 +375,9 @@ pred.ytest <- knn(train = Xtrain, test = Xtest, cl = Ytrain, k = 2)
 conf.test <- table(predicted = pred.ytest,observed = Ytest)
 ```
 
-The training error with 2 neighbors is `r sum(diag(conf.train)/sum(conf.train))`. The true positive rate is `r round(conf.train[1,1]/sum(conf.train[,1]),3)` and the false positive rate is `r round(conf.train[1,2]/sum(conf.train[1,]),3)`.
+The training error with 2 neighbors was `r sum(diag(conf.train)/sum(conf.train))`. The true positive rate was `r round(conf.train[1,1]/sum(conf.train[,1]),3)` and the false positive rate is `r round(conf.train[1,2]/sum(conf.train[1,]),3)`.
 
-The test error with 2 neighbors is `r sum(diag(conf.test)/sum(conf.test))`. The true positive rate is `r round(conf.test[1,1]/sum(conf.test[,1]),3)` and the false positive rate is `r round(conf.test[1,2]/sum(conf.test[1,]),3)`.
+The test error with 2 neighbors was `r sum(diag(conf.test)/sum(conf.test))`. The true positive rate was `r round(conf.test[1,1]/sum(conf.test[,1]),3)` and the false positive rate was `r round(conf.test[1,2]/sum(conf.test[1,]),3)`.
 
 ```{r KNN.cv, cache=TRUE}
 validation.error <- NULL
@@ -390,19 +393,18 @@ numneighbor = max(allK[validation.error == min(validation.error)])
 
 ```
 
-However, the odds of 2 being the correct number of neighbors is very slim. In order ot determine the correct number of neighbors, Leave One Out Cross Validation (LOOCV) is employed. LOOCV works in the following steps:
+However, the odds of $k=2$ being the optimal number of neighbors was very slim. In order to determine the optimal number of neighbors, Leave One Out Cross Validation (LOOCV) was utilized. LOOCV works in the following steps:
 
 \begin{enumerate}
-    \item Remove one observations as a holdout
-    \item Create a KNN model for many k
-    \item predict using the models on the one observation holdout
-    \item record the error for each model
+    \item Remove one observation as a "holdout"
+    \item Create a KNN model using the data exluding the "holdout"
+    \item Predict using the models on the one observation holdout
+    \item Record the error for each model
     \item Repeat for each observation
-    \item choose the number of neighbors (k) that minimized average error rate.
+    \item Choose the number of neighbors (k) that minimized average error rate.
 \end{enumerate}
 
-This can be easily graphed. However, visually identifying the optimal number of neighbors is near impossible. Instead, we result to identifying the maximium
-
+This could be graphed, however, visually identifying the optimal number of neighbors is near impossible. Instead, we resulted to identifying the number of neighbors $k$ that minimized the error rate.
 ```{r neibor_graph, fig.cap="Neighbor Graph"}
 kn_graph <- tibble(
   "Neighbors" = allK,
@@ -413,7 +415,7 @@ ggplot(kn_graph, aes(x = Neighbors, y = `Error Rate`)) +
 
 ```
 
-The optimal number of neighbors determined using LOOCV is `r numneighbor`. Using the optimal number of neighbors, we can produce the test confusion matrix and test error rate:
+The optimal number of neighbors determined using LOOCV wass `r numneighbor`. Using the optimal number of neighbors, we produced the test confusion matrix and test error rate as shown in Table 1. 
 
 ```{r KNN.actual}
 set.seed(67)
@@ -426,7 +428,7 @@ kable(conf.matrix, caption = "Test Confusion Matrix", align = c("c","c"), col.na
   kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") 
 ```
 
-KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This is approximately the same as the logistic regression.
+KNN returned a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)` with `r numneighbor` neighbors. This test error was approximately the same as the logistic regression.
 
 ## Decision Trees
 
@@ -627,11 +629,17 @@ For this dataset, logistic performed the worst. KNN and tree performed relativel
 
 Using data from the Board Game Geek database which contained information on over 10,000 games, we used machine learning techniques to predict which board games were considered "good" by their users. "Good" was defined as a binary classifier equal to 1 if the game had an average user score of 7 or above on a scale of 1-10. After data cleaning, our data set included 9 predictors which we performed exploratory analysis on to find meaningful relationships in the raw data. We found many positive correlations between our predictors and the average user score. With this information in mind, we performed logistic regression, k-nearest neighbors, decision trees, and random forests to build a predictive model. Unsurprisingly, the random forest using $m=3$ provided the best predictions with nearly 85% of our validation data being correctly classified. We hope that our predictive model can be utilized by board game companies to better their customers and continue the revival of board games. As mentioned, board games are a way of promoting person-on-person interaction: a lacking feature of today's technology driven world. With our model, we can hope that we are mitigating the decline of human interaction.
 
+
+# Extra: Graveyard of Failed Ideas
+
+It is worth noting that this is our third iteration of this machine learning project. For our first project (our first proposal submitted), we wanted to NYC restaurant health inspections to find out which restaurants close and what are the best predictors of closing. This project was scrapped because it needed additional data from Yelp on restaurant closers. The Yelp data set proved to be hard to obtain and merge, so we pivoted to a second project. Our second project (which we submitted yet another proposal for) was using IPUMS/CPS data to predict what types of people get divorced. This seemed like an excellent idea, as we had easily accessible data that was relatively clean. After doing exploratory analysis and cleaning, we were left with very little predictive power: only five predictors contained ample data to perform analysis on. When we ran this data through our algorithms, the algorithms would not give any results because power was too low. In fact, the decision tree only contained one branch. Because of this, we needed to find a new project in very little time (this occurred only a week and a half ago). We settled on this idea because the data was relatively clean, large, and we KNEW we could get some predictions. Since our final predicts around 85% of the validation data correctly, we can say that "third times a charm". 
+
 # Appendix
 
+## Extra Code
 
 ```{r logit_regression}
 mtable(mod_logit)
 ```
 
-# Cited
+# References
