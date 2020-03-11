@@ -432,9 +432,9 @@ KNN returned a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)
 
 ## Decision Trees
 
-Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
+Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using the training data, our prediction tree is diplayed in Figure \ref{DecisionTree}.
 
-Decision trees are built using iteration through the predictors. Specifically, a decision tree first begins by choosing a predictor and calculating a "split" to find the best measure of impurity. Impurity is essentially a weighted average of the misclassification error rate. This process is repeated multiple times until there are no further predictors to iterate through. 
+Decision trees are built using iteration through the predictors. Specifically, a decision tree first begins by choosing a predictor and calculating the amount of correctly classified observations. After doing this, it calculates impurity for the predictor. Impurity is essentially a weighted average of the misclassification rate. After all predictors are iterated through, the predictor with the lowest impurity is chosen. This process is repeated multiple times until there are no further predictors to iterate through. 
 
 ```{r treegraph, fig.cap="\\label{DecisionTree}Decision Tree on Training Set", fig.width=6, fig.height=4}
 library(tree)
@@ -451,7 +451,7 @@ error.tree = table(yhat.testset, test.dat$above7)
 tree.accuracy = sum(diag(error.tree)/sum(error.tree))
 tree.error.rate = 1 - tree.accuracy
 ```
-This particular tree did an adaquet job predicting whether a game was rated highly-- it received a misclassification rate of `r round(tree.error.rate,3)`. 
+This particular tree did an adaquet job predicting whether a game was rated highly--it received a misclassification rate of `r round(tree.error.rate,3)`. To read the tree, you need to start at the top of the tree (the "root" node) and follow the tree downwards based on the criteria given. If the criteria is true, follow the tree to the right, if the criteria is false, follow the tree left.
 
 
 ```{r}
@@ -459,7 +459,7 @@ cv.for.tree = cv.tree(tree.fit, FUN=prune.misclass, K=10)
 optimal.size = cv.for.tree$size[which.min(cv.for.tree$dev)]
 ```
 
-```{r prunetree, fig.cap="\\label{Prunetree}Pruned Decision Tree Using Cross Validation for Optimal Size", fig.width=6, fig.height=4}
+```{r prunetree, fig.cap="\\label{Prunetree}Pruned Decision Tree on Test Data Using Cross Validation for Optimal Size", fig.width=6, fig.height=4}
 tree.prune = prune.misclass(tree.fit, best = optimal.size)
 plot(tree.prune)
 text(tree.prune, pretty = 0, cex = 0.8)
@@ -479,7 +479,7 @@ To enhance this tree, we used cross validation to find the optimal tree size. Af
 
 ## Random Forest/Bagging
 
-Our main ensemble method used was the random forest. The random forest combines the idea of bootstrapping and decision trees to make predictions. Specifically, a bootstrap data set is first created. This means that we draw a random sample of observations from our data with replacement. The replacement aspect is crucial here--we need to be certain that our bootstrap data set is not identical to the original data set. After the data is boostrapped, a decision tree is made using the bootstrapped data, but only a random subset of predictors are considered at each step. In particular, we denote this random subset of predictors as the $m$ parameter. This process is repeated multiple times (in our case 500 for computing time purposes) to create the random forest. We initialized our random forest by arbitrarily chosing the parameter $m= 3$.
+Our main ensemble method used was the random forest. The random forest combines the idea of bootstrapping and decision trees to make predictions. Specifically, a bootstrap data set is first created. This means that we draw a random sample of observations from our data with replacement. The replacement aspect is crucial here--we need to be certain that our bootstrap data set is not identical to the original data set. After the data is bootstrapped, a decision tree is made using the bootstrapped data. However, the twist is that only a random subset of predictors are considered at each step. In particular, we denote this random subset of predictors as the $m$ parameter. This process is repeated multiple times (in our case 500 for computing time purposes) to create the random forest. We initialized our random forest by arbitrarily choosing the parameter $m= 3$.
  
 ```{r , include = FALSE}
 library(randomForest)
@@ -578,7 +578,7 @@ kable(mtry.table, caption = "Parameter m and Test Errors", align = c("c","c")) %
 
 # Discussion
 
-We have presented four machine learning methods to predict which board games will score above a 7. We first observed the data, identified key variables, and tranformed when necessary. We then split the data into training (50%), testing (25%), and validation (25%). We will now present the validation results and determine an optimal model:
+We performed four machine learning methods to predict which board games will score above a 7. We first observed the data, identified key variables, and tranformed when necessary. We then split the data into training (50%), testing (25%), and validation (25%). Finally, we took all of our optimal models from our analysis and tested how well they predicted using the validation data. The results are shown in Table 3.
 
 ```{r VAlidation_make}
 #Logit
@@ -621,7 +621,7 @@ kable(validation_table, caption = "Validation Error Rate", align = c("c","c")) %
     row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")
 ```
 
-For this dataset, logistic performed the worst. KNN and tree performed relatively similar while Random Forest was the obvious winner. Given this dataset, we would recommend using Random Forest to predict future quality board games. The major benefit of Random Forest is the ensemble nature: by aggregating many trees the method is able to add precision to out of sample modeling. Our random forest utilized all 9 of our predictors and was created using the parameter $m=3$ with the number of trees equal to 500. We suspect that with more predictors, we could have succeeded in building a more powerful model since our data was limited to only 9 predictors that were useable. However, predicting nearly 85% of the validation data correctly is an astounding feat for our first machine learning project. 
+For this dataset, logistic performed the worst. KNN and tree performed relatively similar while Random Forest was the clear winner. Given this dataset, we would recommend using Random Forest to predict future quality board games. The major benefit of Random Forest is the ensemble nature: by aggregating many trees the method is able to add precision to out of sample modeling. Our random forest utilized all 9 of our predictors and was created using the parameter $m=3$ with the number of trees equal to 500. We suspect that with more predictors, we could have succeeded in building a more powerful model since our data was limited to only 9 predictors that were useable. However, predicting nearly 85% of the validation data correctly is an astounding feat for our first machine learning project. 
 
 
 
