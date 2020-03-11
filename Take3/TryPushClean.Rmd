@@ -1,5 +1,5 @@
 ---
-title: "Final Project"
+title: "No More Bored Games: Predicting Which Board Games Get Highly Rated"
 author: "Michael Topper and Danny Klinenberg"
 output: 
   pdf_document:
@@ -215,15 +215,15 @@ catcounts %>%
 
 For our final analysis, we utilized 9 final predictors. The predictors are a mix of both categorical and numerical data:
 \begin{enumerate}
-    \item Maximum playtime
-    \item Minimum age
-    \item Minimum players
-    \item Maximum players
-    \item Whether the game was designed by a ``top ten'' designer
-    \item Game mechanics
-    \item Whether the game was an expansion
-    \item Decade the game was published
-    \item Number of users who rated the game
+    \item Maximum playtime (*max_playtime*)
+    \item Minimum age (*min_age*)
+    \item Minimum players (*min_players*)
+    \item Maximum players (*max_players*)
+    \item Whether the game was designed by a ``top ten'' designer (*top.ten*)
+    \item Game mechanics (*mechanic1*)
+    \item Whether the game was an expansion (*expansion1*)
+    \item Decade the game was published (*decade*)
+    \item Number of users who rated the game (*users_rated*)
 \end{enumerate}
 We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course. However, we will note that each of these variables (if cleaned properly) could easily increase our prediction rate since advertising has a large effect on consumer behavior \cite{ackerberg2001empirically}. 
 
