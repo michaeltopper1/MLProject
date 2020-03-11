@@ -1,6 +1,6 @@
 ---
 title: "No More Bored Games: Predicting Which Board Games Get Highly Rated"
-author: "Michael Topper and Danny Klinenberg"
+author: "Michael Topper (#5788708) and Danny Klinenberg"
 output: 
   pdf_document:
     fig_caption: TRUE
@@ -104,7 +104,6 @@ playtime<-df %>% filter(max_playtime < 10000) %>%
   ggplot(aes(x = max_playtime, y = average_rating)) +
   geom_point(color = 'grey') +
   geom_smooth( se = F) +
-  geom_hline(yintercept = 7, color = 'red') +
   xlab("Maximum Playtime (minutes)") +
   ylab("")+
   theme(plot.title = element_text(hjust = 0.5)) 
@@ -112,7 +111,6 @@ playtime<-df %>% filter(max_playtime < 10000) %>%
 user_rate<-df %>% ggplot(aes(x = users_rated, y = average_rating)) +
   geom_point(color = 'grey') +
   geom_smooth(se = F) +
-  geom_hline(yintercept = 7, color = 'red') +
   xlab("Users Rated") +
   ylab("")+
   theme(plot.title = element_text(hjust = 0.5)) 
@@ -215,15 +213,15 @@ catcounts %>%
 
 For our final analysis, we utilized 9 final predictors. The predictors are a mix of both categorical and numerical data:
 \begin{enumerate}
-    \item Maximum playtime (*max_playtime*)
-    \item Minimum age (*min_age*)
-    \item Minimum players (*min_players*)
-    \item Maximum players (*max_players*)
-    \item Whether the game was designed by a ``top ten'' designer (*top.ten*)
-    \item Game mechanics (*mechanic1*)
-    \item Whether the game was an expansion (*expansion1*)
-    \item Decade the game was published (*decade*)
-    \item Number of users who rated the game (*users_rated*)
+    \item Maximum playtime (max\_playtime)
+    \item Minimum age (min\_age)
+    \item Minimum players (min\_players)
+    \item Maximum players (max\_players)
+    \item Whether the game was designed by a ``top ten'' designer (top.ten)
+    \item Game mechanics (mechanic1)
+    \item Whether the game was an expansion (expansion1)
+    \item Decade the game was published (decade)
+    \item Number of users who rated the game (users\_rated)
 \end{enumerate}
 We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course. However, we will note that each of these variables (if cleaned properly) could easily increase our prediction rate since advertising has a large effect on consumer behavior \cite{ackerberg2001empirically}. 
 
@@ -231,9 +229,20 @@ We created two new variables of the nine that were used as final predictors: a b
 
 # Methods
 
-To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores.  After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follow.
+To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores (see Figure \ref{dist}).  After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follow.
 
 To ensure replication of results, we set the seed to 4. We split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. 
+
+```{r, outcum_hist, fig.cap="\\label{dist}Distribution of Average Ratings Across Games"}
+df %>% ggplot(aes(average_rating)) +
+  geom_histogram(fill = "grey") +
+  geom_vline(aes(xintercept = 7), color = 'red') +
+  labs(xintercept = "Classification Cutoff") +
+  theme(plot.title = element_text(hjust = 0.5))  +
+  ylab("Count") +
+  xlab("Average Rating") +
+  theme_classic()
+```
  
 ## Logistic Regression
 
@@ -557,7 +566,7 @@ To find the optimal $m$, we looped over multiple values of $m$. Note that when $
 ```{r mtry, fig.cap="\\label{mtry}Importance Plot", fig.width=6, fig.height=3}
 mtry.table <- tibble("m" = c("2","3","4","5","6","7","8","9"), "Test Errors" = round(rf.error.loop, 3))
 
-kable(mtry.table, caption = "Table Parameter m and Test Errors", align = c("c","c")) %>% 
+kable(mtry.table, caption = "Parameter m and Test Errors", align = c("c","c")) %>% 
   kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") %>% 
     row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")                   
                     
@@ -616,20 +625,10 @@ For this dataset, logistic performed the worst. KNN and tree performed relativel
 
 # Conclusion
 
-
+Using data from the Board Game Geek database which contained information on over 10,000 games, we used machine learning techniques to predict which board games were considered "good" by their users. "Good" was defined as a binary classifier equal to 1 if the game had an average user score of 7 or above on a scale of 1-10. After data cleaning, our data set included 9 predictors which we performed exploratory analysis on to find meaningful relationships in the raw data. We found many positive correlations between our predictors and the average user score. With this information in mind, we performed logistic regression, k-nearest neighbors, decision trees, and random forests to build a predictive model. Unsurprisingly, the random forest using $m=3$ provided the best predictions with nearly 85% of our validation data being correctly classified. We hope that our predictive model can be utilized by board game companies to better their customers and continue the revival of board games. As mentioned, board games are a way of promoting person-on-person interaction: a lacking feature of today's technology driven world. With our model, we can hope that we are mitigating the decline of human interaction.
 
 # Appendix
 
-```{r, outcum_hist, fig.cap="Distribution of Average Ratings Across Games"}
-df %>% ggplot(aes(average_rating)) +
-  geom_histogram(fill = "grey") +
-  geom_vline(aes(xintercept = 7), color = 'red') +
-  labs(xintercept = "Classification Cutoff") +
-  theme(plot.title = element_text(hjust = 0.5))  +
-  ylab("Count") +
-  xlab("Average Rating") +
-  theme_classic()
-```
 
 ```{r logit_regression}
 mtable(mod_logit)
