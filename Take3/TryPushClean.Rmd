@@ -1,6 +1,6 @@
 ---
 title: "No More Bored Games: Predicting Which Board Games Get Highly Rated"
-author: "Michael Topper (#5788708) and Danny Klinenberg"
+author: "Michael Topper (#5788708) and Danny Klinenberg (7626054)"
 output: 
   pdf_document:
     fig_caption: TRUE
@@ -231,7 +231,7 @@ We created two new variables of the nine that were used as final predictors: a b
 
 To begin, we first made a classifier for whether a game had an average user score of a 7 or over on a 1-10 scale. This decision was made because 7 was approximately the 80th percentile of the distribution of scores (see Figure \ref{dist}).  After defining these classifiers, we performed logistic regression, k-nearest neighbors, and decision trees as our non-ensemble methods. For ensemble methods, we used random forests and bagging. More detailed explanations on how these were performed follow. Each of these techniques were pre-determined in our research proposals, thus excluding the possibility of us exhausting all methods to find the best choice by random chance.
 
-To ensure replication of results, we set the seed to 4. We randomly split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. The random splits were crucial as it allowed us to omit any sort of bias in non-random splits. Hence, we can expect that there are no systematic differences between our three sets. 
+To ensure replication of results, we set the seed to 4. We randomly split the data into a training, testing, and validation set. The splits were made randomly on a 50-25-25 split respectively. This equates to `r dim(train.dat)[1]` observations in the training, `r dim(test.dat)[1]` observations in the test and `r dim(validation.dat)[1]` observations in the validation set. The random splits were crucial as it allowed us to omit any sort of bias in non-random splits. Hence, we can expect that there are no systematic differences between our three sets. 
 
 ```{r, outcum_hist, fig.cap="\\label{dist}Distribution of Average Ratings Across Games"}
 df %>% ggplot(aes(average_rating)) +
