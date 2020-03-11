@@ -56,19 +56,7 @@ cat.mut<-danny.dat.use %>%
   filter(n<20)
 
 danny.dat.use <- danny.dat.use %>% 
-  mutate(mechanic1 = ifelse(mechanic1 %in% cat.mut$mechanic1, "other",mechanic1)) %>% 
-   apply_labels(.,
-                      above7 = "Above 7",
-                      max_playtime = "Max Playtime",
-                      min_age = "Minimum Age",
-                      min_players = "Minimum Players",
-                      max_players = "Maximum Players",
-                      top.ten = "Top 10 Creators",
-                      mechanic1 = "Game Mechanics",
-                      users_rated = "Number User Rated",
-                      expansion1 = "Number of Expansions",
-                      decade = "Decade"
-)
+  mutate(mechanic1 = ifelse(mechanic1 %in% cat.mut$mechanic1, "other",mechanic1))
 
 ```
 
@@ -349,7 +337,7 @@ The best value to use as a cutoff is `r round(best,3)` with a  success rate of `
 ```{r KNN.setup}
 Ytrain <- train.dat$above7
 Xtrain <- train.dat %>% select(-above7) %>% 
-  dummy_cols(., remove_selected_columns = TRUE)
+  dummy_cols(.,  remove_selected_columns = TRUE)
 Xtrain <- scale(Xtrain,center = TRUE, scale = TRUE)
 
 Ytest <- test.dat$above7
