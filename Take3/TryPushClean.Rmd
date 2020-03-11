@@ -555,9 +555,9 @@ When $m= 3$ we found that we found that our misclassification rate was `r round(
 
 To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. Using our results, we find that the test error for bagging is `r round(bagging.error,3)`. Observe that Table 2 shows the different test error rates for the different values of $m$. From the table, we find that the best value for $m$ that minimizes our test error is `r round(optimal.m,3)`.  
 ```{r mtry, fig.cap="\\label{mtry}Importance Plot", fig.width=6, fig.height=3}
-mtry.table <- tibble("Mtry" = c("2","3","4","5","6","7","8","9"), "Test Errors" = round(rf.error.loop, 3))
+mtry.table <- tibble("m" = c("2","3","4","5","6","7","8","9"), "Test Errors" = round(rf.error.loop, 3))
 
-kable(mtry.table, caption = "Mtry Table of Test Errors", align = c("c","c")) %>% 
+kable(mtry.table, caption = "Table Parameter m and Test Errors", align = c("c","c")) %>% 
   kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") %>% 
     row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")                   
                     
@@ -610,9 +610,13 @@ kable(validation_table, caption = "Validation Error Rate", align = c("c","c")) %
     row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")
 ```
 
-For this dataset, logistic performed the worst. KNN and tree performed relatively similar while Random Forest was the obvious winner. Given this dataset, we would recommend using Random Forest to predict future quality board games. The major benefit of Random Forest is the ensemble nature: by aggregating many trees the method is able to add precision to out of sample modeling. In conclusions, use Random Forest the next time you want to play a new board game to guarantee it's a banger.
+For this dataset, logistic performed the worst. KNN and tree performed relatively similar while Random Forest was the obvious winner. Given this dataset, we would recommend using Random Forest to predict future quality board games. The major benefit of Random Forest is the ensemble nature: by aggregating many trees the method is able to add precision to out of sample modeling. Our random forest utilized all 9 of our predictors and was created using the parameter $m=3$ with the number of trees equal to 500. We suspect that with more predictors, we could have succeeded in building a more powerful model since our data was limited to only 9 predictors that were useable. However, predicting nearly 85% of the validation data correctly is an astounding feat for our first machine learning project. 
 
-#Conclusion
+
+
+# Conclusion
+
+
 
 # Appendix
 
