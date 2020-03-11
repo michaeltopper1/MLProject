@@ -225,7 +225,7 @@ For our final analysis, we utilized 9 final predictors. The predictors are a mix
     \item Decade the game was published
     \item Number of users who rated the game
 \end{enumerate}
-We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course.
+We decided on these predictors due to the relationships we saw in our exploratory analysis. Furthermore, the other variables were either too sparse or required advanced methods to clean. For instance, our compilation predictor which included information on whether or not the board game was part of a compilation series, only had information for 337 of our 10,000 observations. Therefore, we dropped this variable from analysis. Moreover, the variables "description", "image", and "thumbnail" required image processing techniques in which we believed were out of the scope of this course. However, we will note that each of these variables (if cleaned properly) could easily increase our prediction rate since advertising has a large effect on consumer behavior \cite{ackerberg2001empirically}. 
 
 We created two new variables of the nine that were used as final predictors: a binary variable for whether the game was designed by a top ten designer, and decade the game was published. Originally, the data had information on the designer that created each game. To create the binary variable, we first filtered the data to make sure there were no uncredited games. Next, we counted the top designers and sorted them in descending order. We took the top 10 designers by the number of games they designed--if there was a tie (e.g. the 10th and 11th designer had the same count) we included them both as a top ten designer. For the decade variable, we simply grouped our year data into decades. This was accomplished because we hypothesized that games changed more by decade than by year. 
 
@@ -421,7 +421,7 @@ KNN returns a test error of `r round(sum(diag(conf.matrix)/sum(conf.matrix)),3)`
 
 ## Decision Trees
 
-ecision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
+Decision trees were made using the tree library in R. To begin, we built the tree including all predictors. Using this our prediction tree is diplayed in Figure \ref{DecisionTree}.
 
 
 ```{r treegraph, fig.cap="\\label{DecisionTree}Decision Tree on Training Set", fig.width=6, fig.height=4}
@@ -467,16 +467,35 @@ To enhance this tree, we next used cross validation to find the optimal tree siz
 
 ## Random Forest/Bagging
 
-Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
-
 Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. 
-```{r rf, fig.cap="\\label{rf} Random Forest", fig.width=6, fig.height=3}
+ 
+```{r , include = FALSE}
 library(randomForest)
 train.dat = train.dat %>% mutate_if(is.character, as.factor)
 test.dat = test.dat %>% mutate_if(is.character, as.factor)
 rf.tree = randomForest(above7 ~., data = train.dat, mtry = 3, ntree = 500, importance = T)
-plot(rf.tree, main = "")
+oobData = as.data.table(plot(rf.tree))
+
+# Define trees as 1:ntree
+oobData[, trees := .I]
+
+melt = reshape2::melt
+# Cast to long format
+oobData2 = melt(oobData, id.vars = "trees")
+setnames(oobData2, "value", "error")
+
+
 ```
+
+```{r rferror, fig.cap="\\label{rferror}Error of the Random Forest", fig.width=6, fig.height=3}
+oobData2 %>% 
+  ggplot(aes(x = trees, y = error, color = variable)) +
+  geom_line() +
+  xlab("Trees") +
+  ylab("Error") +
+  labs(color = "")
+```
+
 
 ```{r}
 yhat.rf = predict(rf.tree, newdata = test.dat)
@@ -517,29 +536,35 @@ ggarrange(mean.gini, mean.accuracy)
 
 
 ```{r}
-# rf.error.loop = rep(0, 8)
-# for (i in 2:9) {
-#   rf.tree.loop = randomForest(above7 ~., data = train.dat, mtry = i, ntree = 500, importance = T)
-#   yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat)
-#   rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat$above7)
-#   rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
-#   rf.error.loop[i-1] = rf.test.error.loop
-# }
+rf.error.loop = rep(0, 8)
+for (i in 2:9) {
+  rf.tree.loop = randomForest(above7 ~., data = train.dat, mtry = i, ntree = 500, importance = T)
+  yhat.rf.loop = predict(rf.tree.loop, newdata = test.dat)
+  rf.err.loop = table(pred = yhat.rf.loop, truth = test.dat$above7)
+  rf.test.error.loop = 1 - sum(diag(rf.err.loop))/sum(rf.err.loop)
+  rf.error.loop[i-1] = rf.test.error.loop
+}
+bagging.error = rf.error.loop[8]
+optimal.m = which(rf.error.loop == min(rf.error.loop)) +1
 ```
 
 
 
-When $mtry = 3$ we found that our misclassification rate was `r round(rf.test.error, 3)`. This was a significant upgrade from our previous decision tree method. To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. 
+When $mtry = 3$ we found that we found that our misclassification rate was `r round(rf.test.error, 3)`. This was a significant upgrade from our previous decision tree method. To find the optimal $m$, we looped over multiple values of $m$. Note that when $m=9$, we are performing bagging. Using our results, we find that the test error for bagging is `r bagging.error`. Observe that Table 2 shows the different test error rates for the different values of $m$. From the table, we find that the best value for $m$ that minimizes our test error is `r round(optimal.m,3)`.  
+```{r mtry, fig.cap="\\label{mtry}Importance Plot", fig.width=6, fig.height=3}
+mtry.table <- tibble("Mtry" = c("2","3","4","5","6","7","8","9"), "Test Errors" = round(rf.error.loop, 3))
 
-## Random Forest/Bagging
-
-Our main ensemble method used was the random forest. We created a random forest using the randomForest package in R. To begin, we arbitrarily chose a parameter for ``mtry'', the number of variables that should be considered on each iteration when creating each branch in the random forest's trees. When $mtry = 3$ we found that 
+kable(mtry.table, caption = "Mtry Table of Test Errors", align = c("c","c")) %>% 
+  kable_styling(bootstrap_options = "striped",  font_size = 8, latex_options = "hold_position") %>% 
+    row_spec(0, bold = T, background = col2hex("deepskyblue4"), color = "white")                   
+                    
+```
 
 
 
 # Conclusion
 
-We have presented four machine learning methods to predict which board games will score above a 7.5. We first observed the data, identified key variables, and tranformed when necessary. We then split the data into training (50%), testing (25%), and validation (25%). We will now present the validation results and determine an optimal model:
+We have presented four machine learning methods to predict which board games will score above a 7. We first observed the data, identified key variables, and tranformed when necessary. We then split the data into training (50%), testing (25%), and validation (25%). We will now present the validation results and determine an optimal model:
 
 ```{r VAlidation_make}
 #Logit
