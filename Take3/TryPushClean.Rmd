@@ -1,6 +1,6 @@
 ---
 title: "No More Bored Games: Predicting Which Board Games Get Highly Rated"
-author: "Michael Topper (#5788708) and Danny Klinenberg (7626054)"
+author: "Michael Topper (5788708) and Danny Klinenberg (7626054)"
 output: 
   pdf_document:
     fig_caption: TRUE
